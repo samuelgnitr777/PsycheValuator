@@ -60,7 +60,8 @@ const StatusIcon = ({ status }: { status: TestSubmission['analysisStatus'] }) =>
 };
 
 export default async function ManualReviewDetailPage({ params }: { params: { submissionId: string } }) {
-  const submission = await getSubmissionByIdAdmin(params.submissionId);
+  const { submissionId } = params; // Destructure submissionId here
+  const submission = await getSubmissionByIdAdmin(submissionId); // Use the destructured variable
 
   if (!submission) {
     notFound();
