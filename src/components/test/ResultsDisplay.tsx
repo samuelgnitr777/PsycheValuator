@@ -3,7 +3,7 @@
 
 import { Test, TestSubmission } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { CheckCircle, Clock, Brain, FileText, Activity, AlertTriangle, User, CalendarDays, Info, Mail } from 'lucide-react';
+import { CheckCircle, Clock, Brain, FileText, Activity, AlertTriangle, User, CalendarDays, Info, Mail, FileSignature } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { format, isValid, parseISO } from 'date-fns'; 
@@ -43,7 +43,6 @@ function formatSubmittedAt(isoStringInput: string | null | undefined): string {
         console.warn("[formatSubmittedAt Client] Received invalid date string after parsing:", isoStringInput, "Parsed as:", dateObj, '. Returning "Format tanggal tidak valid".');
         return "Format tanggal tidak valid";
     }
-    // Use 'PPPPpppp' for a very full date and time format with locale
     const formattedDate = format(dateObj, "dd MMMM yyyy, HH:mm:ss", { locale: indonesiaLocale });
     console.log('[formatSubmittedAt Client] Formatted date:', formattedDate);
     return formattedDate;
@@ -56,7 +55,6 @@ function formatSubmittedAt(isoStringInput: string | null | undefined): string {
 
 export function ResultsDisplay({ test, submission }: ResultsDisplayProps) {
   // DETAILED CLIENT-SIDE LOGS
-  console.log('[ResultsDisplay Client] Props received - submission object (raw):', submission);
   console.log('[ResultsDisplay Client] Props received - submission object (JSON):', JSON.stringify(submission, null, 2));
   console.log('[ResultsDisplay Client] Props received - test object (JSON):', JSON.stringify(test, null, 2));
   
@@ -72,7 +70,6 @@ export function ResultsDisplay({ test, submission }: ResultsDisplayProps) {
     console.log('[ResultsDisplay Client] Submission prop is null or not an object.');
   }
 
-  // Use optional chaining and provide fallbacks
   const fullNameDisplay = submission?.fullName || "Nama tidak diisi";
   const submittedDateString = submission?.submittedAt ? formatSubmittedAt(submission.submittedAt) : "Tanggal tidak tersedia";
   
@@ -154,7 +151,7 @@ export function ResultsDisplay({ test, submission }: ResultsDisplayProps) {
         <div>
           <h3 className="text-xl font-semibold mb-3 flex items-center text-primary">
             <Brain className="mr-2 h-6 w-6 text-[hsl(var(--accent))]" />
-            Analisis Sifat Psikologis
+            Analisis Sifat Psikologis (AI)
           </h3>
           {isLoadingAnalysis ? (
             <Card className="bg-muted/20 border">
@@ -171,14 +168,14 @@ export function ResultsDisplay({ test, submission }: ResultsDisplayProps) {
             <Card className="bg-yellow-50 border-yellow-300">
               <CardContent className="p-4 text-center">
                 <Info className="mx-auto h-8 w-8 text-yellow-500 mb-2" />
-                <p className="text-yellow-700 font-semibold">Analisis Tertunda</p>
+                <p className="text-yellow-700 font-semibold">Analisis AI Tertunda</p>
                 <p className="text-yellow-600 text-sm">
-                  {submission.aiError || "Terjadi masalah saat membuat analisis otomatis."}
-                  Hasil Anda akan ditinjau secara manual oleh tim kami. Terima kasih atas kesabaran Anda.
+                  {submission.aiError || "Terjadi masalah saat membuat analisis otomatis dari AI."}
+                  Hasil Anda mungkin memerlukan tinjauan manual atau coba lagi nanti.
                 </p>
               </CardContent>
             </Card>
-          ) : submission.analysisStatus === 'ai_completed' && submission.psychologicalTraits ? (
+          ) : submission.psychologicalTraits ? ( // Changed this condition to check psychologicalTraits directly
             <Card className="bg-background border-primary/30">
                 <CardContent className="p-4">
                     <p className="whitespace-pre-wrap leading-relaxed text-foreground/90">{submission.psychologicalTraits}</p>
@@ -189,13 +186,29 @@ export function ResultsDisplay({ test, submission }: ResultsDisplayProps) {
               <CardContent className="p-4 text-center">
                  <AlertTriangle className="mx-auto h-8 w-8 text-muted-foreground mb-2" />
                  <p className="text-muted-foreground">
-                  Analisis tidak tersedia saat ini.
-                  {submission.analysisStatus === 'manual_review_completed' && !submission.psychologicalTraits && " Hasil tinjauan manual belum menyertakan catatan analisis."}
+                  Analisis AI tidak tersedia atau belum selesai.
                 </p>
               </CardContent>
             </Card>
           )}
         </div>
+
+        {submission.manualAnalysisNotes && (
+          <>
+            <Separator />
+            <div>
+              <h3 className="text-xl font-semibold mb-3 flex items-center text-primary">
+                <FileSignature className="mr-2 h-6 w-6 text-[hsl(var(--accent))]" />
+                Catatan Analisis Manual
+              </h3>
+              <Card className="bg-background border-accent/30">
+                  <CardContent className="p-4">
+                      <p className="whitespace-pre-wrap leading-relaxed text-foreground/90">{submission.manualAnalysisNotes}</p>
+                  </CardContent>
+              </Card>
+            </div>
+          </>
+        )}
 
         <Separator />
 
@@ -221,5 +234,3 @@ export function ResultsDisplay({ test, submission }: ResultsDisplayProps) {
     </Card>
   );
 }
-
-    
