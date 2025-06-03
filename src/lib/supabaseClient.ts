@@ -6,10 +6,10 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
 if (!supabaseUrl) {
-  throw new Error("Missing env.NEXT_PUBLIC_SUPABASE_URL");
+  throw new Error("FATAL ERROR: NEXT_PUBLIC_SUPABASE_URL is not defined. Check .env.local file, its location (project root), and ensure the Next.js server is restarted.");
 }
 if (!supabaseAnonKey) {
-  throw new Error("Missing env.NEXT_PUBLIC_SUPABASE_ANON_KEY");
+  throw new Error("FATAL ERROR: NEXT_PUBLIC_SUPABASE_ANON_KEY is not defined. Check .env.local file, its location (project root), and ensure the Next.js server is restarted.");
 }
 
-export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey);
+export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {});
