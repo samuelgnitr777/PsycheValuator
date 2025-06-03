@@ -29,6 +29,8 @@ export function TestPlayer({ test }: TestPlayerProps) {
   const [email, setEmail] = useState('');
   const [submissionId, setSubmissionId] = useState<string | null>(null);
   const [formError, setFormError] = useState('');
+  const [showRlsErrorDialog, setShowRlsErrorDialog] = useState(false);
+  const [rlsErrorMessage, setRlsErrorMessage] = useState('');
 
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<UserAnswer[]>([]);
@@ -76,13 +78,19 @@ export function TestPlayer({ test }: TestPlayerProps) {
       const err = error as Error;
       console.error("[TestPlayer] Gagal memulai tes:", err.message, err.stack);
       const displayMessage = err.message || "Gagal memulai tes. Silakan coba lagi.";
-      setFormError(displayMessage); 
-      toast({ 
-        title: 'Gagal Memulai Tes',
-        description: displayMessage.split('\n').map((line, i) => <p key={i} className={i === 0 ? 'font-semibold' : ''}>{line}</p>), // Format for readability
-        variant: 'destructive',
-        duration: 20000 // Longer duration for complex error messages
-      });
+      
+      if (displayMessage.includes("RLS VIOLATION")) {
+        setRlsErrorMessage(displayMessage);
+        setShowRlsErrorDialog(true);
+      } else {
+        setFormError(displayMessage); 
+        toast({ 
+          title: 'Gagal Memulai Tes',
+          description: displayMessage.split('\n').map((line, i) => <p key={i} className={i === 0 ? 'font-semibold' : ''}>{line}</p>),
+          variant: 'destructive',
+          duration: 20000 
+        });
+      }
       setCurrentScreen('nameInput');
     }
   };
@@ -195,47 +203,75 @@ export function TestPlayer({ test }: TestPlayerProps) {
 
   if (currentScreen === 'nameInput') {
     return (
-      <Card className="w-full max-w-md mx-auto shadow-xl">
-        <CardHeader className="text-center">
-          <User className="mx-auto h-12 w-12 text-primary mb-3" />
-          <CardTitle className="text-2xl font-headline">Mulai Tes: {test.title}</CardTitle>
-          <CardDescription>Silakan masukkan nama lengkap dan email Anda untuk memulai.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div>
-            <Label htmlFor="fullName">Nama Lengkap</Label>
-            <div className="relative mt-1">
-              <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                id="fullName"
-                type="text"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                placeholder="Masukkan nama lengkap Anda"
-                className="pl-9"
-              />
-            </div>
-          </div>
-          <div>
-            <Label htmlFor="email">Email</Label>
-             <div className="relative mt-1">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+      <>
+        <Card className="w-full max-w-md mx-auto shadow-xl">
+          <CardHeader className="text-center">
+            <User className="mx-auto h-12 w-12 text-primary mb-3" />
+            <CardTitle className="text-2xl font-headline">Mulai Tes: {test.title}</CardTitle>
+            <CardDescription>Silakan masukkan nama lengkap dan email Anda untuk memulai.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <Label htmlFor="fullName">Nama Lengkap</Label>
+              <div className="relative mt-1">
+                <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="cth: email@example.com"
+                  id="fullName"
+                  type="text"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  placeholder="Masukkan nama lengkap Anda"
                   className="pl-9"
                 />
               </div>
-          </div>
-          {formError && <p className="text-sm text-destructive mt-1 whitespace-pre-wrap">{formError}</p>}
-          <Button onClick={handleStartTest} className="w-full">
-            <PlayCircle className="mr-2 h-5 w-5" /> Mulai Tes
-          </Button>
-        </CardContent>
-      </Card>
+            </div>
+            <div>
+              <Label htmlFor="email">Email</Label>
+               <div className="relative mt-1">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="cth: email@example.com"
+                    className="pl-9"
+                  />
+                </div>
+            </div>
+            {formError && <p className="text-sm text-destructive mt-1 whitespace-pre-wrap">{formError}</p>}
+            <Button onClick={handleStartTest} className="w-full">
+              <PlayCircle className="mr-2 h-5 w-5" /> Mulai Tes
+            </Button>
+          </CardContent>
+        </Card>
+
+        <AlertDialog open={showRlsErrorDialog} onOpenChange={setShowRlsErrorDialog}>
+          <AlertDialogContent className="max-w-xl">
+            <AlertDialogHeader>
+              <AlertDialogTitle className="text-destructive flex items-center">
+                <AlertTriangle className="mr-2 h-6 w-6" />
+                Konfigurasi Database Diperlukan (RLS Policy)
+              </AlertDialogTitle>
+              <AlertDialogDescription className="text-left max-h-[60vh] overflow-y-auto text-sm">
+                Gagal memulai tes karena masalah izin pada database. Ini BUKAN bug pada kode aplikasi, tetapi memerlukan konfigurasi pada proyek Supabase Anda.
+                <br /><br />
+                Pesan error dari database:
+                <code className="block bg-muted p-2 rounded-md my-2 text-xs whitespace-pre-wrap overflow-x-auto">
+                  {rlsErrorMessage.split("TO FIX")[0]}
+                </code>
+                <strong>IKUTI LANGKAH-LANGKAH BERIKUT DI SUPABASE DASHBOARD ANDA:</strong>
+                <ol className="list-decimal list-inside space-y-1 mt-2 pl-4">
+                  {(rlsErrorMessage.split("TO FIX")[1] || "").split('\n').map((line, index) => line.trim() && <li key={index}>{line.replace(/^\d+\.\s*/, '')}</li>)}
+                </ol>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogAction onClick={() => setShowRlsErrorDialog(false)}>Saya Mengerti</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </>
     );
   }
 
