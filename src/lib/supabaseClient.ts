@@ -32,11 +32,18 @@ export const createSupabaseServiceRoleClient = (): SupabaseClient => {
   const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   if (!supabaseServiceRoleKey || supabaseServiceRoleKey.trim() === '') {
-    throw new Error(
-      "FATAL ERROR: SUPABASE_SERVICE_ROLE_KEY is not defined or is empty in your .env.local file. " +
-      "This key is required for admin database operations. Please obtain it from your Supabase project settings (API -> Project API Keys -> service_role secret) " +
-      "and add it to .env.local. Restart the server after adding it."
+    console.warn(
+      "********************************************************************************************************\n" +
+      "WARNING: SUPABASE_SERVICE_ROLE_KEY is not defined or is empty in your environment.\n" +
+      "Falling back to using the anonymous Supabase client for service role operations.\n" +
+      "This is NOT SECURE and may lead to operations failing due to RLS policies.\n" +
+      "Please ensure SUPABASE_SERVICE_ROLE_KEY is correctly set in your .env.local file and restart the server.\n" +
+      "See: Supabase project settings (API -> Project API Keys -> service_role secret).\n" +
+      "********************************************************************************************************"
     );
+    // Fallback to anon client if service role key is missing.
+    // This is a workaround to prevent a hard crash but has security/functionality implications.
+    return supabase;
   }
   return createClient<Database>(supabaseUrl, supabaseServiceRoleKey, {
     auth: {
@@ -46,3 +53,4 @@ export const createSupabaseServiceRoleClient = (): SupabaseClient => {
     },
   });
 };
+
