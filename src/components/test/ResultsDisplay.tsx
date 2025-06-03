@@ -2,9 +2,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import type { Test, TestSubmission } from '@/types';
+import type { Test, TestSubmission, QuestionOption } from '@/types'; // Added QuestionOption
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { CheckCircle, Clock, Brain, FileText, Activity, User, CalendarDays, Info, Mail, FileSignature } from 'lucide-react';
+import { CheckCircle, Clock, FileText, Activity, User, CalendarDays, Mail, FileSignature } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { format, isValid, parseISO } from 'date-fns';
@@ -65,8 +65,6 @@ export function ResultsDisplay({ test, submission }: ResultsDisplayProps) {
   }
 
   const answersMap = new Map(submission?.answers?.map(a => [a.questionId, a.value]) || []);
-  // AI loading state is no longer needed
-  // const isLoadingAnalysis = submission?.analysisStatus === 'pending_ai';
 
   if (!submission || !test) {
     return (
@@ -136,10 +134,6 @@ export function ResultsDisplay({ test, submission }: ResultsDisplayProps) {
 
         <Separator />
         
-        {/* AI Analysis Section Removed */}
-        {/* The section for AI psychological traits and AI errors has been removed. */}
-        {/* The status 'pending_ai' now implies waiting for manual review. */}
-
         <div>
           <h3 className="text-xl font-semibold mb-3 flex items-center text-primary">
             <FileSignature className="mr-2 h-6 w-6 text-[hsl(var(--accent))]" />
@@ -172,14 +166,40 @@ export function ResultsDisplay({ test, submission }: ResultsDisplayProps) {
           </h3>
           <ScrollArea className="h-72 w-full rounded-md border p-1">
             <div className="p-3 space-y-3">
-            {test.questions?.map((q, index) => (
-              <div key={q.id} className="pb-3 border-b last:border-b-0">
-                <p className="font-medium text-foreground/80">P{index + 1}: {q.text}</p>
-                <p className="text-accent-foreground bg-accent/10 p-2 rounded-md mt-1 text-sm">
-                  <strong>Jawaban Anda:</strong> {answersMap.get(q.id)?.toString() || <span className="italic text-muted-foreground">Tidak dijawab</span>}
-                </p>
-              </div>
-            ))}
+            {test.questions?.map((q, index) => {
+              const answerValue = answersMap.get(q.id);
+              let displayAnswer: string | number | JSX.Element;
+
+              if (answerValue === undefined || answerValue === null || String(answerValue).trim() === '') {
+                  displayAnswer = <span className="italic text-muted-foreground">Tidak dijawab</span>;
+              } else {
+                  if (q.type === 'multiple-choice' && q.options) {
+                      const selectedOption = q.options.find(opt => opt.id === answerValue);
+                      if (selectedOption) {
+                          displayAnswer = selectedOption.text;
+                      } else {
+                          // Option ID stored, but not found in current question definition
+                          displayAnswer = (
+                              <>
+                                  {String(answerValue)}{' '} 
+                                  <span className="italic text-xs text-muted-foreground">(Opsi tidak ditemukan)</span>
+                              </>
+                          );
+                      }
+                  } else {
+                      // For rating-scale or open-ended
+                      displayAnswer = String(answerValue);
+                  }
+              }
+              return (
+                <div key={q.id} className="pb-3 border-b last:border-b-0">
+                  <p className="font-medium text-foreground/80">P{index + 1}: {q.text}</p>
+                  <p className="text-accent-foreground bg-accent/10 p-2 rounded-md mt-1 text-sm">
+                    <strong>Jawaban Anda:</strong> {displayAnswer}
+                  </p>
+                </div>
+              );
+            })}
             </div>
           </ScrollArea>
         </div>

@@ -41,9 +41,9 @@ function formatSubmittedAt(isoString: string | null | undefined): string {
 
 function getStatusDisplay(status: TestSubmission['analysisStatus']): string {
   switch (status) {
-    case 'pending_ai': return 'Menunggu Tinjauan'; // Changed from 'Menunggu AI'
-    case 'ai_completed': return 'AI Selesai (Manual)'; // Potentially set manually by admin
-    case 'ai_failed_pending_manual': return 'AI Gagal (Manual)'; // Potentially set manually
+    case 'pending_ai': return 'Menunggu Tinjauan'; 
+    case 'ai_completed': return 'AI Selesai (Manual)'; 
+    case 'ai_failed_pending_manual': return 'AI Gagal (Manual)'; 
     case 'manual_review_completed': return 'Manual Selesai';
     default: return status;
   }
@@ -114,8 +114,6 @@ export default async function ManualReviewDetailPage({ params }: { params: { sub
             </CardContent>
           </Card>
 
-          {/* AI Analysis sections (submission.psychologicalTraits and submission.aiError) removed */}
-
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center"><Activity className="mr-2 text-primary"/>Jawaban Pengguna</CardTitle>
@@ -123,23 +121,47 @@ export default async function ManualReviewDetailPage({ params }: { params: { sub
             <CardContent>
               <ScrollArea className="h-72 w-full rounded-md border p-1">
                 <div className="p-3 space-y-3">
-                {test.questions?.map((q, index) => (
-                  <div key={q.id} className="pb-3 border-b last:border-b-0">
-                    <p className="font-medium text-sm">P{index + 1}: {q.text}</p>
-                    {q.type === 'multiple-choice' && q.options && (
-                        <ul className="mt-1 list-disc list-inside text-xs text-muted-foreground pl-4">
-                        {q.options.map((opt: QuestionOption) => (
-                            <li key={opt.id} className={answersMap.get(q.id) === opt.id || answersMap.get(q.id) === opt.text ? 'font-semibold text-accent' : ''}>
-                            {opt.text}
-                            </li>
-                        ))}
-                        </ul>
-                    )}
-                    <p className="text-accent-foreground bg-accent/10 p-2 rounded-md mt-1 text-sm">
-                      <strong>Jawaban:</strong> {answersMap.get(q.id)?.toString() || <span className="italic text-muted-foreground">Tidak dijawab</span>}
-                    </p>
-                  </div>
-                ))}
+                {test.questions?.map((q, index) => {
+                  const userAnswerValue = answersMap.get(q.id);
+                  let displayUserAnswer: string | number | JSX.Element;
+
+                  if (userAnswerValue === undefined || userAnswerValue === null || String(userAnswerValue).trim() === '') {
+                      displayUserAnswer = <span className="italic text-muted-foreground">Tidak dijawab</span>;
+                  } else {
+                      if (q.type === 'multiple-choice' && q.options) {
+                          const selectedOption = q.options.find(opt => opt.id === userAnswerValue);
+                          if (selectedOption) {
+                              displayUserAnswer = selectedOption.text;
+                          } else {
+                              displayUserAnswer = (
+                                  <>
+                                      {String(userAnswerValue)}{' '}
+                                      <span className="italic text-xs text-muted-foreground">(Opsi tidak ditemukan)</span>
+                                  </>
+                              );
+                          }
+                      } else {
+                          displayUserAnswer = String(userAnswerValue);
+                      }
+                  }
+                  return (
+                    <div key={q.id} className="pb-3 border-b last:border-b-0">
+                      <p className="font-medium text-sm">P{index + 1}: {q.text}</p>
+                      {q.type === 'multiple-choice' && q.options && (
+                          <ul className="mt-1 list-disc list-inside text-xs text-muted-foreground pl-4">
+                          {q.options.map((opt: QuestionOption) => (
+                              <li key={opt.id} className={userAnswerValue === opt.id ? 'font-semibold text-accent' : ''}>
+                              {opt.text}
+                              </li>
+                          ))}
+                          </ul>
+                      )}
+                      <p className="text-accent-foreground bg-accent/10 p-2 rounded-md mt-1 text-sm">
+                        <strong>Jawaban:</strong> {displayUserAnswer}
+                      </p>
+                    </div>
+                  );
+                })}
                 </div>
               </ScrollArea>
             </CardContent>
