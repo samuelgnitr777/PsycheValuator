@@ -30,11 +30,11 @@ export async function updateTestAction(id: string, data: Partial<Omit<Test, 'id'
     if (!updatedTest) {
       return { success: false, message: 'Tes tidak ditemukan' };
     }
-    // Revalidate the entire layout for these paths to be more aggressive
-    revalidatePath('/admin/dashboard/tests', 'layout'); 
-    revalidatePath(`/admin/dashboard/tests/${id}/edit`, 'page'); // page specific reval for edit
+    // Revalidate the list pages and the specific test pages
+    revalidatePath('/admin/dashboard/tests', 'page'); 
+    revalidatePath(`/admin/dashboard/tests/${id}/edit`, 'page'); 
     revalidatePath(`/tests/${id}`, 'page'); 
-    revalidatePath('/', 'layout');
+    revalidatePath('/', 'page');
     return { success: true, test: updatedTest };
   } catch (error) {
     return { success: false, message: error instanceof Error ? error.message : 'Gagal memperbarui tes' };
@@ -111,4 +111,3 @@ export async function deleteQuestionAction(testId: string, questionId: string) {
     return { success: false, message: error instanceof Error ? error.message : 'Gagal menghapus pertanyaan' };
   }
 }
-
