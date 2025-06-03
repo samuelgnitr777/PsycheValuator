@@ -9,12 +9,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { loginAdmin, isAdminLoggedIn } from '@/lib/authService';
 import { useToast } from '@/hooks/use-toast';
-import { KeyRound, LogIn } from 'lucide-react';
+import { KeyRound, LogIn, Mail } from 'lucide-react';
 import Link from 'next/link';
 import { useAuthContext } from '@/components/AppProviders';
 
 
 export default function AdminLoginPage() {
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -40,15 +41,23 @@ export default function AdminLoginPage() {
     setError('');
     setIsLoading(true);
 
-    const success = loginAdmin(password);
+    if (!email.trim() || !password.trim()) {
+      setError('Email dan kata sandi tidak boleh kosong.');
+      setIsLoading(false);
+      toast({ title: 'Login Gagal', description: 'Email dan kata sandi tidak boleh kosong.', variant: 'destructive' });
+      return;
+    }
 
-    if (success) {
+    const result = await loginAdmin(email, password);
+
+    if (result.success) {
       setIsLoggedIn(true); 
       toast({ title: 'Login Berhasil', description: 'Mengarahkan ke dasbor...' });
       router.push('/admin/dashboard');
     } else {
-      setError('Kata sandi tidak valid. Silakan coba lagi.');
-      toast({ title: 'Login Gagal', description: 'Kata sandi tidak valid.', variant: 'destructive' });
+      const errorMessage = result.error || 'Email atau kata sandi tidak valid. Silakan coba lagi.';
+      setError(errorMessage);
+      toast({ title: 'Login Gagal', description: errorMessage, variant: 'destructive' });
       setIsLoading(false);
     }
   };
@@ -64,10 +73,25 @@ export default function AdminLoginPage() {
         <CardHeader className="text-center">
           <KeyRound className="mx-auto h-12 w-12 text-primary mb-2" />
           <CardTitle className="text-2xl font-headline">Login Admin</CardTitle>
-          <CardDescription>Masukkan kata sandi Anda untuk mengakses dasbor.</CardDescription>
+          <CardDescription>Masukkan email dan kata sandi Anda untuk mengakses dasbor.</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  placeholder="admin@example.com"
+                  className="pl-9"
+                />
+              </div>
+            </div>
             <div className="space-y-2">
               <Label htmlFor="password">Kata Sandi</Label>
               <Input
