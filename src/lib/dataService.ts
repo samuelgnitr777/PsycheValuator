@@ -368,15 +368,16 @@ export async function deleteQuestionFromTestAdmin(testId: string, questionId: st
 }
 
 // --- Submission Management ---
+// This function is called by anon users initially.
 export async function createInitialSubmission(testId: string, fullName: string, email: string): Promise<TestSubmission> {
   const submissionPayload = {
     test_id: testId,
     full_name: fullName,
     email: email,
-    answers: [], // Initialize with empty answers
-    time_taken: 0, // Initialize time_taken
-    submitted_at: new Date().toISOString(), // Set submission time
-    analysis_status: 'pending_ai' as const, // Set initial status
+    answers: [],
+    time_taken: 0,
+    submitted_at: new Date().toISOString(),
+    analysis_status: 'pending_ai' as const,
   };
 
   const { data, error } = await anonSupabaseClient
@@ -388,7 +389,7 @@ export async function createInitialSubmission(testId: string, fullName: string, 
   if (error) {
     const context = 'creating initial submission';
     const baseMessage = `Supabase error ${context}:`;
-    console.error(baseMessage, JSON.stringify(error, null, 2));
+    console.error(baseMessage, JSON.stringify(error, null, 2)); // Log the raw error object
 
     let detailedMessage = `Failed ${context}.`;
     if (typeof error === 'object' && error !== null) {
@@ -414,14 +415,18 @@ export async function createInitialSubmission(testId: string, fullName: string, 
     }
     throw new Error(detailedMessage);
   }
-  if (!data) {
+  if (!data) { // Should be caught by .single() if no data, but as a fallback.
     throw new Error('Failed to create initial submission: No data returned from Supabase. This can happen if RLS prevents returning the inserted row, or due to a network issue.');
   }
   return data as TestSubmission;
 }
 
+// This function is called during the test flow (TestPlayer, ResultsDisplay)
+// Using service_role client for these updates to ensure they complete,
+// as RLS for 'anon' on updates can be complex or too permissive for this stage.
 export async function updateSubmission(submissionId: string, submissionData: Partial<Omit<TestSubmission, 'id' | 'testId' | 'fullName' | 'email'>>): Promise<TestSubmission | undefined> {
-  const { data, error } = await anonSupabaseClient // Use anon client for user updates
+  const supabaseService = createSupabaseServiceRoleClient(); // Use service_role client
+  const { data, error } = await supabaseService
     .from('submissions')
     .update({
       answers: submissionData.answers,
@@ -434,25 +439,49 @@ export async function updateSubmission(submissionId: string, submissionData: Par
     })
     .eq('id', submissionId)
     .select()
-    .maybeSingle(); // Changed from .single() to .maybeSingle()
+    .maybeSingle();
 
   if (error) {
-     console.error(`Supabase error updating submission ${submissionId}:`, JSON.stringify(error, null, 2));
-    throw new Error((error as any).message || `Failed to update submission ${submissionId}. Check RLS policies for anon role for UPDATE on "submissions".`);
+    const context = `updating submission ${submissionId} (service client)`;
+    const baseMessage = `Supabase error ${context}:`;
+    console.error(baseMessage, JSON.stringify(error, null, 2));
+    let detailedMessage = `Failed ${context}.`;
+     if (typeof error === 'object' && error !== null) {
+      detailedMessage = (error as any).message || JSON.stringify(error);
+    } else {
+      detailedMessage = String(error);
+    }
+    throw new Error(detailedMessage);
   }
-  return data as TestSubmission | undefined;
+  // If data is null after an update attempt, it implies the row wasn't found or some other issue.
+  if (!data) {
+    const errorMessage = `Failed to update submission ${submissionId} or retrieve it after update (service client). The submission ID might not exist.`;
+    console.error(errorMessage);
+    throw new Error(errorMessage);
+  }
+  return data as TestSubmission;
 }
 
+// Publicly accessible function to get a submission by ID (e.g., for results page)
+// Uses anon client, relies on RLS for 'anon' SELECT.
 export async function getSubmissionById(submissionId: string): Promise<TestSubmission | undefined> {
-  const { data, error } = await anonSupabaseClient // Use anon client for public fetching of results
+  const { data, error } = await anonSupabaseClient
     .from('submissions')
     .select('*')
     .eq('id', submissionId)
     .maybeSingle();
 
   if (error) {
-    console.error(`Supabase error fetching submission ${submissionId}:`, JSON.stringify(error, null, 2));
-    throw new Error((error as any).message || `Failed to fetch submission ${submissionId}. Check RLS.`);
+    const context = `fetching submission ${submissionId} (anon client)`;
+    const baseMessage = `Supabase error ${context}:`;
+    console.error(baseMessage, JSON.stringify(error, null, 2));
+    let detailedMessage = `Failed ${context}.`;
+    if (typeof error === 'object' && error !== null) {
+      detailedMessage = (error as any).message || JSON.stringify(error);
+    } else {
+      detailedMessage = String(error);
+    }
+    throw new Error(detailedMessage);
   }
   return data as TestSubmission | undefined;
 }
@@ -465,10 +494,14 @@ export async function updateSubmissionAdmin(submissionId: string, submissionData
         .update(submissionData)
         .eq('id', submissionId)
         .select()
-        .maybeSingle(); // Changed from .single() to .maybeSingle()
+        .maybeSingle();
 
     if (error) {
         throw handleAdminSupabaseError(error, `updating submission ${submissionId}`);
+    }
+    if (!data && !error) { // If no error but data is null, the row probably didn't exist
+        console.warn(`Admin update for submission ${submissionId} returned no data. Submission might not exist.`);
+        return undefined; 
     }
     return data as TestSubmission | undefined;
 }
@@ -526,5 +559,4 @@ export async function getTestById(id: string): Promise<Test | undefined> {
     questions: (data.questions || []).sort((a, b) => (a.order || 0) - (b.order || 0)),
   } as Test;
 }
-
     
