@@ -1,9 +1,10 @@
 
 'use client';
 
+import { useState, useEffect } from 'react';
 import type { Test, TestSubmission } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { CheckCircle, Clock, Brain, FileText, Activity, AlertTriangle, User, CalendarDays, Info, Mail, Send, Loader2 } from 'lucide-react';
+import { CheckCircle, Clock, Brain, FileText, Activity, AlertTriangle, User, CalendarDays, Info, Mail, Send, Loader2, FileSignature } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { format, isValid, parseISO } from 'date-fns'; 
@@ -13,6 +14,29 @@ import { id as indonesiaLocale } from 'date-fns/locale';
 interface ResultsDisplayProps {
   test: Test;
   submission: TestSubmission;
+}
+
+// This function is now only called client-side via useEffect
+function formatSubmittedAtClient(isoStringInput: string | null | undefined): string {
+  console.log('[formatSubmittedAtClient Client] Received input:', isoStringInput);
+  if (!isoStringInput || typeof isoStringInput !== 'string' || isoStringInput.trim() === '') {
+    console.log('[formatSubmittedAtClient Client] Input is null, undefined, or empty string. Returning "Tanggal tidak tersedia".');
+    return "Tanggal tidak tersedia";
+  }
+  try {
+    const dateObj = parseISO(isoStringInput);
+    console.log('[formatSubmittedAtClient Client] Parsed date object:', dateObj);
+    if (!isValid(dateObj)) {
+        console.warn("[formatSubmittedAtClient Client] Received invalid date string after parsing:", isoStringInput, "Parsed as:", dateObj, '. Returning "Format tanggal tidak valid".');
+        return "Format tanggal tidak valid";
+    }
+    const formattedDate = format(dateObj, "dd MMMM yyyy, HH:mm:ss", { locale: indonesiaLocale });
+    console.log('[formatSubmittedAtClient Client] Formatted date:', formattedDate);
+    return formattedDate;
+  } catch (error) {
+    console.error("[formatSubmittedAtClient Client] Error formatting date:", isoStringInput, error, '. Returning "Error format tanggal".');
+    return "Error format tanggal";
+  }
 }
 
 function formatTime(seconds: number): string {
@@ -30,31 +54,19 @@ function formatTime(seconds: number): string {
   return timeString;
 }
 
-function formatSubmittedAt(isoStringInput: string | null | undefined): string {
-  console.log('[formatSubmittedAt Client] Received input:', isoStringInput);
-  if (!isoStringInput || typeof isoStringInput !== 'string' || isoStringInput.trim() === '') {
-    console.log('[formatSubmittedAt Client] Input is null, undefined, or empty string. Returning "Tanggal tidak tersedia".');
-    return "Tanggal tidak tersedia";
-  }
-  try {
-    const dateObj = parseISO(isoStringInput);
-    console.log('[formatSubmittedAt Client] Parsed date object:', dateObj);
-    if (!isValid(dateObj)) {
-        console.warn("[formatSubmittedAt Client] Received invalid date string after parsing:", isoStringInput, "Parsed as:", dateObj, '. Returning "Format tanggal tidak valid".');
-        return "Format tanggal tidak valid";
-    }
-    const formattedDate = format(dateObj, "dd MMMM yyyy, HH:mm:ss", { locale: indonesiaLocale });
-    console.log('[formatSubmittedAt Client] Formatted date:', formattedDate);
-    return formattedDate;
-  } catch (error) {
-    console.error("[formatSubmittedAt Client] Error formatting date:", isoStringInput, error, '. Returning "Error format tanggal".');
-    return "Error format tanggal";
-  }
-}
-
 
 export function ResultsDisplay({ test, submission }: ResultsDisplayProps) {
-  // DETAILED CLIENT-SIDE LOGS
+  const [submittedDateStringToRender, setSubmittedDateStringToRender] = useState<string>("Memuat tanggal...");
+
+  useEffect(() => {
+    if (submission && submission.submittedAt) {
+      setSubmittedDateStringToRender(formatSubmittedAtClient(submission.submittedAt));
+    } else {
+      setSubmittedDateStringToRender("Tanggal tidak tersedia");
+    }
+  }, [submission]); // Re-run if submission object changes
+
+
   console.log('[ResultsDisplay Client] Props received - submission object (JSON):', JSON.stringify(submission, null, 2));
   console.log('[ResultsDisplay Client] Props received - test object (JSON):', JSON.stringify(test, null, 2));
   
@@ -63,12 +75,6 @@ export function ResultsDisplay({ test, submission }: ResultsDisplayProps) {
     fullNameDisplay = String(submission.fullName);
   }
   console.log('[ResultsDisplay Client] fullName to be rendered:', fullNameDisplay);
-  
-  let submittedDateString = "Tanggal tidak tersedia";
-  if (submission && submission.submittedAt) {
-    submittedDateString = formatSubmittedAt(submission.submittedAt);
-  }
-  console.log('[ResultsDisplay Client] submittedDateString to be rendered:', submittedDateString);
 
 
   const answersMap = new Map(submission?.answers?.map(a => [a.questionId, a.value]) || []);
@@ -113,7 +119,7 @@ export function ResultsDisplay({ test, submission }: ResultsDisplayProps) {
                 <div className="flex items-center md:col-span-2">
                     <CalendarDays className="h-4 w-4 mr-2 text-muted-foreground"/>
                     <span className="font-medium mr-1">Dikirim:</span>
-                    <span>{submittedDateString}</span>
+                    <span>{submittedDateStringToRender}</span>
                 </div>
             </CardContent>
         </Card>
@@ -172,13 +178,15 @@ export function ResultsDisplay({ test, submission }: ResultsDisplayProps) {
                 </p>
               </CardContent>
             </Card>
-          ) : (
+          ) : ( // Covers 'manual_review_completed' or other statuses where AI traits might not be primary or available
              <Card className="bg-muted/20 border">
               <CardContent className="p-4 text-center space-y-2">
                  <Info className="mx-auto h-8 w-8 text-muted-foreground mb-2" />
                  <p className="text-muted-foreground">
-                  Analisis AI otomatis telah diproses atau sedang dalam peninjauan.
-                  Informasi lebih lanjut akan disertakan dalam email hasil akhir dari administrator.
+                  {submission.psychologicalTraits 
+                    ? "Analisis AI telah diproses. Lihat di atas jika tersedia." 
+                    : "Analisis AI tidak tersedia atau sedang dalam peninjauan manual."
+                  }
                 </p>
               </CardContent>
             </Card>
@@ -189,7 +197,7 @@ export function ResultsDisplay({ test, submission }: ResultsDisplayProps) {
 
         <div>
           <h3 className="text-xl font-semibold mb-3 flex items-center text-primary">
-            <Send className="mr-2 h-6 w-6 text-[hsl(var(--accent))]" />
+            <FileSignature className="mr-2 h-6 w-6 text-[hsl(var(--accent))]" />
             Hasil Tinjauan Manual & Pemberitahuan
           </h3>
           <Card className="bg-blue-50 border-blue-300">
@@ -199,6 +207,11 @@ export function ResultsDisplay({ test, submission }: ResultsDisplayProps) {
                   <p className="text-blue-600 text-sm">
                     Hasil akhir yang telah ditinjau secara komprehensif oleh administrator kami akan diproses dan dikirimkan ke alamat email Anda ({submission?.email || "email Anda"}). Mohon periksa email Anda secara berkala untuk pemberitahuan selanjutnya.
                   </p>
+                  {submission.analysisStatus === 'manual_review_completed' && submission.manualAnalysisNotes && (
+                     <div className="mt-4 pt-3 border-t border-blue-200">
+                        <p className="text-sm text-blue-700 italic">Catatan dari admin mungkin telah disertakan dalam email Anda.</p>
+                     </div>
+                  )}
               </CardContent>
           </Card>
         </div>
@@ -227,6 +240,4 @@ export function ResultsDisplay({ test, submission }: ResultsDisplayProps) {
     </Card>
   );
 }
-
-
     
