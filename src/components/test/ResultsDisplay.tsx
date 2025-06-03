@@ -1,9 +1,9 @@
 
 'use client';
 
-import { Test, TestSubmission } from '@/types';
+import type { Test, TestSubmission } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { CheckCircle, Clock, Brain, FileText, Activity, AlertTriangle, User, CalendarDays, Info, Mail, FileSignature } from 'lucide-react';
+import { CheckCircle, Clock, Brain, FileText, Activity, AlertTriangle, User, CalendarDays, Info, Mail, Send, Loader2 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { format, isValid, parseISO } from 'date-fns'; 
@@ -58,22 +58,16 @@ export function ResultsDisplay({ test, submission }: ResultsDisplayProps) {
   console.log('[ResultsDisplay Client] Props received - submission object (JSON):', JSON.stringify(submission, null, 2));
   console.log('[ResultsDisplay Client] Props received - test object (JSON):', JSON.stringify(test, null, 2));
   
-  if (submission && typeof submission === 'object') {
-    console.log('[ResultsDisplay Client] Iterating submission keys:');
-    for (const key in submission) {
-      if (Object.prototype.hasOwnProperty.call(submission, key)) {
-        // @ts-ignore
-        console.log(`  Key: ${key}, Value: ${submission[key]}`);
-      }
-    }
-  } else {
-    console.log('[ResultsDisplay Client] Submission prop is null or not an object.');
+  let fullNameDisplay = "Nama tidak diisi";
+  if (submission && submission.fullName && String(submission.fullName).trim() !== '') {
+    fullNameDisplay = String(submission.fullName);
   }
-
-  const fullNameDisplay = submission?.fullName || "Nama tidak diisi";
-  const submittedDateString = submission?.submittedAt ? formatSubmittedAt(submission.submittedAt) : "Tanggal tidak tersedia";
-  
   console.log('[ResultsDisplay Client] fullName to be rendered:', fullNameDisplay);
+  
+  let submittedDateString = "Tanggal tidak tersedia";
+  if (submission && submission.submittedAt) {
+    submittedDateString = formatSubmittedAt(submission.submittedAt);
+  }
   console.log('[ResultsDisplay Client] submittedDateString to be rendered:', submittedDateString);
 
 
@@ -98,7 +92,7 @@ export function ResultsDisplay({ test, submission }: ResultsDisplayProps) {
       <CardHeader className="text-center bg-muted/30 rounded-t-lg p-6">
         <CheckCircle className="mx-auto h-12 w-12 text-green-500 mb-3" />
         <CardTitle className="text-3xl font-headline text-primary">Tes Selesai: {test?.title || "Judul Tes Tidak Ada"}</CardTitle>
-        <CardDescription className="text-lg text-muted-foreground">Berikut adalah hasil dan analisis Anda.</CardDescription>
+        <CardDescription className="text-lg text-muted-foreground">Terima kasih telah menyelesaikan tes ini. Berikut adalah ringkasan pengiriman Anda.</CardDescription>
       </CardHeader>
       <CardContent className="p-6 space-y-6">
         <Card className="p-4 bg-secondary/30">
@@ -156,59 +150,58 @@ export function ResultsDisplay({ test, submission }: ResultsDisplayProps) {
           {isLoadingAnalysis ? (
             <Card className="bg-muted/20 border">
                 <CardContent className="p-4 text-center space-y-2">
-                    <svg className="animate-spin h-8 w-8 text-primary mx-auto mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    <p className="font-semibold text-primary">Menganalisis hasil Anda...</p>
+                    <Loader2 className="animate-spin h-8 w-8 text-primary mx-auto mb-2" />
+                    <p className="font-semibold text-primary">Menganalisis hasil Anda dengan AI...</p>
                     <p className="text-sm text-muted-foreground">Harap tunggu sebentar.</p>
                 </CardContent>
             </Card>
-          ) : submission.analysisStatus === 'ai_failed_pending_manual' ? (
-            <Card className="bg-yellow-50 border-yellow-300">
-              <CardContent className="p-4 text-center">
-                <Info className="mx-auto h-8 w-8 text-yellow-500 mb-2" />
-                <p className="text-yellow-700 font-semibold">Analisis AI Tertunda</p>
-                <p className="text-yellow-600 text-sm">
-                  {submission.aiError || "Terjadi masalah saat membuat analisis otomatis dari AI."}
-                  Hasil Anda mungkin memerlukan tinjauan manual atau coba lagi nanti.
-                </p>
-              </CardContent>
-            </Card>
-          ) : submission.psychologicalTraits ? ( // Changed this condition to check psychologicalTraits directly
+          ) : submission.analysisStatus === 'ai_completed' && submission.psychologicalTraits ? (
             <Card className="bg-background border-primary/30">
                 <CardContent className="p-4">
                     <p className="whitespace-pre-wrap leading-relaxed text-foreground/90">{submission.psychologicalTraits}</p>
                 </CardContent>
             </Card>
+          ) : submission.analysisStatus === 'ai_failed_pending_manual' ? (
+            <Card className="bg-yellow-50 border-yellow-300">
+              <CardContent className="p-4 text-center space-y-2">
+                <Info className="mx-auto h-8 w-8 text-yellow-500 mb-2" />
+                <p className="text-yellow-700 font-semibold">Analisis AI Tertunda</p>
+                <p className="text-yellow-600 text-sm">
+                  {submission.aiError ? `Pesan error: ${submission.aiError}. ` : "Terjadi masalah saat membuat analisis otomatis dari AI. "}
+                  Tim kami akan melakukan tinjauan lebih lanjut. Hasil akhir akan dikirim melalui email.
+                </p>
+              </CardContent>
+            </Card>
           ) : (
              <Card className="bg-muted/20 border">
-              <CardContent className="p-4 text-center">
-                 <AlertTriangle className="mx-auto h-8 w-8 text-muted-foreground mb-2" />
+              <CardContent className="p-4 text-center space-y-2">
+                 <Info className="mx-auto h-8 w-8 text-muted-foreground mb-2" />
                  <p className="text-muted-foreground">
-                  Analisis AI tidak tersedia atau belum selesai.
+                  Analisis AI otomatis telah diproses atau sedang dalam peninjauan.
+                  Informasi lebih lanjut akan disertakan dalam email hasil akhir dari administrator.
                 </p>
               </CardContent>
             </Card>
           )}
         </div>
+        
+        <Separator />
 
-        {submission.manualAnalysisNotes && (
-          <>
-            <Separator />
-            <div>
-              <h3 className="text-xl font-semibold mb-3 flex items-center text-primary">
-                <FileSignature className="mr-2 h-6 w-6 text-[hsl(var(--accent))]" />
-                Catatan Analisis Manual
-              </h3>
-              <Card className="bg-background border-accent/30">
-                  <CardContent className="p-4">
-                      <p className="whitespace-pre-wrap leading-relaxed text-foreground/90">{submission.manualAnalysisNotes}</p>
-                  </CardContent>
-              </Card>
-            </div>
-          </>
-        )}
+        <div>
+          <h3 className="text-xl font-semibold mb-3 flex items-center text-primary">
+            <Send className="mr-2 h-6 w-6 text-[hsl(var(--accent))]" />
+            Hasil Tinjauan Manual & Pemberitahuan
+          </h3>
+          <Card className="bg-blue-50 border-blue-300">
+              <CardContent className="p-4 text-center space-y-2">
+                  <Mail className="mx-auto h-8 w-8 text-blue-500 mb-2" />
+                  <p className="text-blue-700 font-semibold">Hasil Akhir via Email</p>
+                  <p className="text-blue-600 text-sm">
+                    Hasil akhir yang telah ditinjau secara komprehensif oleh administrator kami akan diproses dan dikirimkan ke alamat email Anda ({submission?.email || "email Anda"}). Mohon periksa email Anda secara berkala untuk pemberitahuan selanjutnya.
+                  </p>
+              </CardContent>
+          </Card>
+        </div>
 
         <Separator />
 
@@ -234,3 +227,6 @@ export function ResultsDisplay({ test, submission }: ResultsDisplayProps) {
     </Card>
   );
 }
+
+
+    
