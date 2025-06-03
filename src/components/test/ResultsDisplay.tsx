@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { CheckCircle, Clock, Brain, FileText, Activity, AlertTriangle, User, CalendarDays, Info, Mail } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { format } from 'date-fns';
+import { format, isValid, parseISO } from 'date-fns'; // Ensure isValid and parseISO are imported
 import { id as indonesiaLocale } from 'date-fns/locale';
 
 
@@ -31,27 +31,39 @@ function formatTime(seconds: number): string {
 }
 
 function formatSubmittedAt(isoStringInput: string | null | undefined): string {
+  console.log('[formatSubmittedAt Client] Received input:', isoStringInput);
   if (!isoStringInput || typeof isoStringInput !== 'string' || isoStringInput.trim() === '') {
+    console.log('[formatSubmittedAt Client] Input is null, undefined, or empty string. Returning "Tanggal tidak tersedia".');
     return "Tanggal tidak tersedia";
   }
   try {
-    const dateObj = new Date(isoStringInput);
-    // Check if date is Invalid Date
-    if (isNaN(dateObj.getTime())) {
-        console.warn("formatSubmittedAt received invalid date string:", isoStringInput);
+    const dateObj = parseISO(isoStringInput);
+    console.log('[formatSubmittedAt Client] Parsed date object:', dateObj);
+    if (!isValid(dateObj)) {
+        console.warn("[formatSubmittedAt Client] Received invalid date string after parsing:", isoStringInput, "Parsed as:", dateObj, '. Returning "Format tanggal tidak valid".');
         return "Format tanggal tidak valid";
     }
-    return format(dateObj, "dd MMMM yyyy, HH:mm:ss", { locale: indonesiaLocale });
+    const formattedDate = format(dateObj, "dd MMMM yyyy, HH:mm:ss", { locale: indonesiaLocale });
+    console.log('[formatSubmittedAt Client] Formatted date:', formattedDate);
+    return formattedDate;
   } catch (error) {
-    console.error("Error formatting date:", isoStringInput, error);
+    console.error("[formatSubmittedAt Client] Error formatting date:", isoStringInput, error, '. Returning "Error format tanggal".');
     return "Error format tanggal";
   }
 }
 
 
 export function ResultsDisplay({ test, submission }: ResultsDisplayProps) {
-  const answersMap = new Map(submission.answers.map(a => [a.questionId, a.value]));
+  // DETAILED CLIENT-SIDE LOGS
+  console.log('[ResultsDisplay Client] Props received - submission object:', JSON.parse(JSON.stringify(submission))); // Deep copy for reliable logging
+  console.log('[ResultsDisplay Client] submission.fullName directly:', submission?.fullName);
+  console.log('[ResultsDisplay Client] submission.submittedAt directly:', submission?.submittedAt);
+  
+  const submittedDateString = formatSubmittedAt(submission?.submittedAt);
+  console.log('[ResultsDisplay Client] Result from formatSubmittedAt():', submittedDateString);
 
+
+  const answersMap = new Map(submission.answers.map(a => [a.questionId, a.value]));
   const isLoadingAnalysis = submission.analysisStatus === 'pending_ai';
 
   return (
@@ -69,15 +81,20 @@ export function ResultsDisplay({ test, submission }: ResultsDisplayProps) {
             <CardContent className="p-2 grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2 text-sm">
                 <div className="flex items-center">
                     <User className="h-4 w-4 mr-2 text-muted-foreground"/>
-                    <span className="font-medium mr-1">Nama:</span> {submission.fullName || "Nama tidak tersedia"}
+                    <span className="font-medium mr-1">Nama:</span>
+                    {/* Directly render fullName, provide fallback */}
+                    <span>{submission?.fullName || "Nama tidak diisi"}</span>
                 </div>
                  <div className="flex items-center">
                     <Mail className="h-4 w-4 mr-2 text-muted-foreground"/>
-                    <span className="font-medium mr-1">Email:</span> {submission.email || "Email tidak tersedia"}
+                    <span className="font-medium mr-1">Email:</span>
+                    <span>{submission?.email || "Email tidak diisi"}</span>
                 </div>
                 <div className="flex items-center md:col-span-2">
                     <CalendarDays className="h-4 w-4 mr-2 text-muted-foreground"/>
-                    <span className="font-medium mr-1">Dikirim:</span> {formatSubmittedAt(submission.submittedAt)}
+                    <span className="font-medium mr-1">Dikirim:</span>
+                    {/* Render the formatted date */}
+                    <span>{submittedDateString}</span>
                 </div>
             </CardContent>
         </Card>
@@ -176,4 +193,3 @@ export function ResultsDisplay({ test, submission }: ResultsDisplayProps) {
     </Card>
   );
 }
-
