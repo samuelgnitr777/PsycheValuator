@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
@@ -10,11 +9,11 @@ import { Progress } from '@/components/ui/progress';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, ArrowRight, CheckCircle, AlertTriangle, User, PlayCircle, Mail } from 'lucide-react';
+import { ArrowLeft, ArrowRight, CheckCircle, AlertTriangle, User, PlayCircle, Mail, LogOut, ShieldAlert } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { createInitialSubmission, updateSubmission } from '@/lib/dataService'; 
 import { useToast } from '@/hooks/use-toast';
-
+import { useAuthContext } from '@/components/AppProviders'; // Import useAuthContext
 
 interface TestPlayerProps {
   test: Test;
@@ -24,6 +23,7 @@ const DEFAULT_TIMER_SECONDS = 30;
 const OPEN_ENDED_TIMER_SECONDS = 120;
 
 export function TestPlayer({ test }: TestPlayerProps) {
+  const { isLoggedIn: isAdminLoggedIn } = useAuthContext(); // Get admin login state
   const [currentScreen, setCurrentScreen] = useState<'nameInput' | 'playing' | 'submitting'>('nameInput');
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
@@ -52,6 +52,10 @@ export function TestPlayer({ test }: TestPlayerProps) {
   };
 
   const handleStartTest = async () => {
+    if (isAdminLoggedIn) {
+        setFormError('Admin tidak dapat memulai tes publik saat login. Silakan logout terlebih dahulu atau gunakan mode incognito.');
+        return;
+    }
     if (!fullName.trim()) {
       setFormError('Nama lengkap tidak boleh kosong.');
       return;
@@ -86,7 +90,7 @@ export function TestPlayer({ test }: TestPlayerProps) {
         setFormError(displayMessage); 
         toast({ 
           title: 'Gagal Memulai Tes',
-          description: displayMessage.split('\n').map((line, i) => <p key={i} className={i === 0 ? 'font-semibold' : ''}>{line}</p>),
+          description: <div className="whitespace-pre-wrap">{displayMessage}</div>,
           variant: 'destructive',
           duration: 20000 
         });
@@ -206,42 +210,62 @@ export function TestPlayer({ test }: TestPlayerProps) {
       <>
         <Card className="w-full max-w-md mx-auto shadow-xl">
           <CardHeader className="text-center">
-            <User className="mx-auto h-12 w-12 text-primary mb-3" />
+            {isAdminLoggedIn ? (
+              <ShieldAlert className="mx-auto h-12 w-12 text-orange-500 mb-3" />
+            ) : (
+              <User className="mx-auto h-12 w-12 text-primary mb-3" />
+            )}
             <CardTitle className="text-2xl font-headline">Mulai Tes: {test.title}</CardTitle>
-            <CardDescription>Silakan masukkan nama lengkap dan email Anda untuk memulai.</CardDescription>
+            {isAdminLoggedIn ? (
+                 <CardDescription className="text-orange-600">
+                 Anda login sebagai Admin. Untuk mengambil tes sebagai pengguna, silakan <Button variant="link" className="p-0 h-auto text-orange-600 underline" onClick={() => {
+                     const { logout } = useAuthContext(); // This won't work here directly, need to call context hook at top level
+                     if (typeof window !== 'undefined') {
+                         localStorage.removeItem('isAdminLoggedIn'); // Direct logout action
+                         router.refresh(); // Refresh to reflect logged out state
+                     }
+                 }}>logout</Button> terlebih dahulu atau gunakan mode penyamaran.
+               </CardDescription>
+            ) : (
+              <CardDescription>Silakan masukkan nama lengkap dan email Anda untuk memulai.</CardDescription>
+            )}
           </CardHeader>
           <CardContent className="space-y-4">
-            <div>
-              <Label htmlFor="fullName">Nama Lengkap</Label>
-              <div className="relative mt-1">
-                <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="fullName"
-                  type="text"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  placeholder="Masukkan nama lengkap Anda"
-                  className="pl-9"
-                />
-              </div>
-            </div>
-            <div>
-              <Label htmlFor="email">Email</Label>
-               <div className="relative mt-1">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="email"
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="cth: email@example.com"
-                    className="pl-9"
-                  />
+            {!isAdminLoggedIn && (
+              <>
+                <div>
+                  <Label htmlFor="fullName">Nama Lengkap</Label>
+                  <div className="relative mt-1">
+                    <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="fullName"
+                      type="text"
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
+                      placeholder="Masukkan nama lengkap Anda"
+                      className="pl-9"
+                    />
+                  </div>
                 </div>
-            </div>
+                <div>
+                  <Label htmlFor="email">Email</Label>
+                  <div className="relative mt-1">
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="email"
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        placeholder="cth: email@example.com"
+                        className="pl-9"
+                      />
+                    </div>
+                </div>
+              </>
+            )}
             {formError && <p className="text-sm text-destructive mt-1 whitespace-pre-wrap">{formError}</p>}
-            <Button onClick={handleStartTest} className="w-full">
-              <PlayCircle className="mr-2 h-5 w-5" /> Mulai Tes
+            <Button onClick={handleStartTest} className="w-full" disabled={isAdminLoggedIn}>
+              {isAdminLoggedIn ? <><ShieldAlert className="mr-2 h-5 w-5" /> Admin Tidak Dapat Memulai</> : <><PlayCircle className="mr-2 h-5 w-5" /> Mulai Tes</>}
             </Button>
           </CardContent>
         </Card>
@@ -254,16 +278,7 @@ export function TestPlayer({ test }: TestPlayerProps) {
                 Konfigurasi Database Diperlukan (RLS Policy)
               </AlertDialogTitle>
               <AlertDialogDescription className="text-left max-h-[60vh] overflow-y-auto text-sm">
-                Gagal memulai tes karena masalah izin pada database. Ini BUKAN bug pada kode aplikasi, tetapi memerlukan konfigurasi pada proyek Supabase Anda.
-                <br /><br />
-                Pesan error dari database:
-                <code className="block bg-muted p-2 rounded-md my-2 text-xs whitespace-pre-wrap overflow-x-auto">
-                  {rlsErrorMessage.split("TO FIX")[0]}
-                </code>
-                <strong>IKUTI LANGKAH-LANGKAH BERIKUT DI SUPABASE DASHBOARD ANDA:</strong>
-                <ol className="list-decimal list-inside space-y-1 mt-2 pl-4">
-                  {(rlsErrorMessage.split("TO FIX")[1] || "").split('\n').map((line, index) => line.trim() && <li key={index}>{line.replace(/^\d+\.\s*/, '')}</li>)}
-                </ol>
+                <div className="whitespace-pre-wrap">{rlsErrorMessage}</div>
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
@@ -364,4 +379,3 @@ export function TestPlayer({ test }: TestPlayerProps) {
     </div>
   );
 }
-
