@@ -46,15 +46,12 @@ export async function analyzeTestResponses(
 const prompt = ai.definePrompt({
   name: 'analyzeTestResponsesPrompt',
   input: {schema: AnalyzeTestResponsesInputSchema},
-  // The output schema for the prompt itself should primarily aim for psychologicalTraits.
-  // Errors are handled in the flow's try/catch.
+  // The output schema for the prompt itself aims for psychologicalTraits.
   output: {schema: z.object({ psychologicalTraits: z.string() }) },
   prompt: `Analyze the following test responses and time taken to respond, providing insights into the test taker\'s psychological traits:
 
 Responses: {{{responses}}}
 Time Taken (seconds): {{{timeTaken}}}
-
-Consider the time taken to answer. Slower times may reflect uncertainly or deeper thought, while faster times may suggest confidence or impulsivity.
 
 Provide a detailed analysis of the psychological traits suggested by these responses.
 `,
@@ -68,20 +65,48 @@ const analyzeTestResponsesFlow = ai.defineFlow(
   },
   async (input): Promise<AnalyzeTestResponsesOutput> => {
     try {
-      const {output} = await prompt(input); // This line can throw (e.g. on 503)
-      if (output?.psychologicalTraits) {
-        return { psychologicalTraits: output.psychologicalTraits };
+      const modelResponse = await prompt(input); // Get the full response from the prompt
+
+      // Access the structured output, which should be in modelResponse.output
+      const structuredOutput = modelResponse.output;
+
+      if (structuredOutput && typeof structuredOutput.psychologicalTraits === 'string' && structuredOutput.psychologicalTraits.length > 0) {
+        // We have a valid, non-empty psychologicalTraits string
+        return { psychologicalTraits: structuredOutput.psychologicalTraits };
+      } else {
+        // Log why the expected output was not found
+        let reason = "Unknown reason.";
+        if (!modelResponse) {
+          reason = "The entire response from the prompt was null or undefined.";
+        } else if (!structuredOutput) {
+          reason = "The 'output' field in the prompt's response was null or undefined.";
+        } else if (typeof structuredOutput.psychologicalTraits !== 'string') {
+          reason = "The 'psychologicalTraits' field in the prompt's output was not a string.";
+        } else if (structuredOutput.psychologicalTraits.length === 0) {
+          reason = "The 'psychologicalTraits' field in the prompt's output was an empty string.";
+        }
+        console.warn(`AI analysis prompt did not return expected psychologicalTraits. Reason: ${reason}. Raw structured output from prompt:`, structuredOutput ? JSON.stringify(structuredOutput) : "N/A");
+        return { error: "Analisis AI tidak menghasilkan output yang diharapkan atau formatnya tidak sesuai." };
       }
-      // This case means the prompt succeeded but didn't return the expected data structure.
-      return { error: "Analisis AI tidak menghasilkan output yang diharapkan." };
     } catch (e) {
       console.error("Error during AI analysis prompt execution in flow:", e);
       let errorMessage = "Terjadi kesalahan saat berkomunikasi dengan layanan analisis AI.";
       if (e instanceof Error) {
-        if (e.message.includes("503 Service Unavailable") || e.message.includes("model is overloaded") || e.message.includes("overloaded")) {
+        const errorMsgLower = e.message.toLowerCase();
+        if (errorMsgLower.includes("503 service unavailable") || errorMsgLower.includes("model is overloaded") || errorMsgLower.includes("overloaded")) {
           errorMessage = "Layanan analisis AI sedang kelebihan beban. Silakan coba lagi nanti.";
-        } else if (e.message.includes("Deadline exceeded")) {
+        } else if (errorMsgLower.includes("deadline exceeded")) {
           errorMessage = "Waktu tunggu untuk layanan analisis AI habis. Silakan coba lagi nanti.";
+        } else {
+            // Use the actual error message if it's not one of the specific cases above
+            errorMessage = `Layanan AI Error: ${e.message}`;
+        }
+      } else if (typeof e === 'string' && e.trim() !== '') {
+        errorMessage = `Layanan AI mengembalikan pesan: ${e}`;
+      } else if (typeof e === 'object' && e !== null) {
+        const objMsg = (e as any).message || (e as any).error || (e as any).details;
+        if (objMsg && typeof objMsg === 'string') {
+            errorMessage = `Kesalahan layanan AI: ${objMsg}`;
         }
       }
       return { error: errorMessage };
