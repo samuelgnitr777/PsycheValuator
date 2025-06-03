@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { TestForm } from '@/components/admin/TestForm';
 import { useToast } from '@/hooks/use-toast';
@@ -23,20 +23,21 @@ export default function EditTestFormClient({ initialTest, updateTestAction }: Ed
     setIsSubmitting(false);
 
     if (result.success && result.test) {
-      toast({ title: 'Test Updated', description: `"${result.test.title}" has been successfully updated.` });
-      router.refresh(); // Refresh to ensure title updates if displayed higher up or for consistency
+      toast({ title: 'Test Diperbarui', description: `"${result.test.title}" telah berhasil diperbarui.` });
+      router.refresh(); 
     } else {
-      toast({ title: 'Error Updating Test', description: result.message || 'Could not update the test.', variant: 'destructive' });
+      toast({ title: 'Error Memperbarui Tes', description: result.message || 'Tidak dapat memperbarui tes.', variant: 'destructive' });
     }
   };
 
+  // The TestForm component itself needs to handle re-initialization if its initialData prop changes.
+  // We pass initialTest directly to TestForm, which should use useEffect to reset itself.
   return (
     <TestForm 
       initialData={initialTest} 
       onSubmit={handleSubmit} 
       isSubmitting={isSubmitting} 
-      submitButtonText="Update Test Details"
+      submitButtonText="Perbarui Detail Tes"
     />
   );
 }
-

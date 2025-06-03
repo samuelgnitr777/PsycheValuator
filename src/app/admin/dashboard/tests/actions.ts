@@ -18,6 +18,7 @@ export async function createTestAction(data: Omit<Test, 'id' | 'questions' | 'is
     const newTest = await createTestData(data);
     revalidatePath('/admin/dashboard/tests');
     revalidatePath('/'); 
+    // Navigating to the edit page, which is force-dynamic, should fetch fresh data.
     return { success: true, test: newTest };
   } catch (error) {
     return { success: false, message: error instanceof Error ? error.message : 'Gagal membuat tes' };
@@ -30,10 +31,10 @@ export async function updateTestAction(id: string, data: Partial<Omit<Test, 'id'
     if (!updatedTest) {
       return { success: false, message: 'Tes tidak ditemukan' };
     }
-    revalidatePath('/admin/dashboard/tests');
-    revalidatePath(`/admin/dashboard/tests/${id}/edit`);
-    revalidatePath(`/tests/${id}`); 
-    revalidatePath('/');
+    revalidatePath('/admin/dashboard/tests'); // Revalidate the list page
+    revalidatePath(`/admin/dashboard/tests/${id}/edit`); // Revalidate the current edit page
+    revalidatePath(`/tests/${id}`); // Revalidate the public test page
+    revalidatePath('/'); // Revalidate the homepage
     return { success: true, test: updatedTest };
   } catch (error) {
     return { success: false, message: error instanceof Error ? error.message : 'Gagal memperbarui tes' };
@@ -48,6 +49,7 @@ export async function deleteTestAction(id: string) {
     }
     revalidatePath('/admin/dashboard/tests');
     revalidatePath('/');
+    // Also revalidate any specific test pages if they were cached, though deletion makes them 404.
     return { success: true };
   } catch (error) {
     return { success: false, message: error instanceof Error ? error.message : 'Gagal menghapus tes' };
@@ -60,9 +62,9 @@ export async function toggleTestPublicationAction(testId: string, newStatus: boo
     if (!updatedTest) {
       return { success: false, message: 'Tes tidak ditemukan' };
     }
-    revalidatePath('/admin/dashboard/tests');
-    revalidatePath('/');
-    revalidatePath(`/tests/${testId}`);
+    revalidatePath('/admin/dashboard/tests'); // Revalidate the list page
+    revalidatePath('/'); // Revalidate homepage
+    revalidatePath(`/tests/${testId}`); // Revalidate the public test page
     return { success: true, test: updatedTest };
   } catch (error) {
     return { success: false, message: error instanceof Error ? error.message : 'Gagal memperbarui status publikasi tes' };
@@ -75,10 +77,10 @@ export async function addQuestionAction(testId: string, questionData: Omit<Quest
     if (!newQuestion) {
       return { success: false, message: 'Tes tidak ditemukan atau gagal menambah pertanyaan' };
     }
-    revalidatePath(`/admin/dashboard/tests/${testId}/edit`);
-    revalidatePath(`/tests/${testId}`);
+    revalidatePath(`/admin/dashboard/tests/${testId}/edit`); // Revalidate the edit page (questions tab)
+    revalidatePath(`/tests/${testId}`); // Revalidate public test page as question count changes
     return { success: true, question: newQuestion };
-  } catch (error) {
+  } catch (error)
     return { success: false, message: error instanceof Error ? error.message : 'Gagal menambah pertanyaan' };
   }
 }

@@ -11,6 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import type { Test } from '@/types';
 import { Save } from 'lucide-react';
+import { useEffect } from 'react';
 
 const testFormSchema = z.object({
   title: z.string().min(3, { message: 'Judul minimal 3 karakter.' }).max(100),
@@ -34,6 +35,15 @@ export function TestForm({ initialData, onSubmit, isSubmitting, submitButtonText
       description: initialData?.description || '',
     },
   });
+
+  useEffect(() => {
+    if (initialData) {
+      form.reset({
+        title: initialData.title,
+        description: initialData.description,
+      });
+    }
+  }, [initialData, form]);
 
   return (
     <Card>
@@ -82,4 +92,3 @@ export function TestForm({ initialData, onSubmit, isSubmitting, submitButtonText
     </Card>
   );
 }
-
