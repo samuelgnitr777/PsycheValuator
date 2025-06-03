@@ -3,24 +3,33 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Test, UserAnswer } from '@/types';
+import { Test, UserAnswer, TestSubmission } from '@/types';
 import { QuestionDisplay } from './QuestionDisplay';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { ArrowLeft, ArrowRight, CheckCircle, AlertTriangle } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { ArrowLeft, ArrowRight, CheckCircle, AlertTriangle, User, PlayCircle } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { createInitialSubmission, updateSubmission } from '@/lib/dataService'; // Import submission functions
 
 interface TestPlayerProps {
   test: Test;
 }
 
-const DEFAULT_TIMER_SECONDS = 15;
-const OPEN_ENDED_TIMER_SECONDS = 30;
+const DEFAULT_TIMER_SECONDS = 30;
+const OPEN_ENDED_TIMER_SECONDS = 120;
 
 export function TestPlayer({ test }: TestPlayerProps) {
+  const [currentScreen, setCurrentScreen] = useState<'nameInput' | 'playing' | 'submitting'>('nameInput');
+  const [fullName, setFullName] = useState('');
+  const [submissionId, setSubmissionId] = useState<string | null>(null);
+  const [nameError, setNameError] = useState('');
+
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<UserAnswer[]>([]);
-  const [startTime, setStartTime] = useState<number>(0);
+  const [testStartTime, setTestStartTime] = useState<number>(0); // For calculating total timeTaken for test
   const router = useRouter();
   const [timeLeft, setTimeLeft] = useState(DEFAULT_TIMER_SECONDS);
 
@@ -32,29 +41,43 @@ export function TestPlayer({ test }: TestPlayerProps) {
     }
   }, [currentQuestion]);
 
-  useEffect(() => {
-    setStartTime(Date.now());
-  }, []);
+  const handleStartTest = async () => {
+    if (!fullName.trim()) {
+      setNameError('Nama lengkap tidak boleh kosong.');
+      return;
+    }
+    setNameError('');
+    setCurrentScreen('submitting'); // Show loading while creating submission
+    try {
+      const initialSubmission = await createInitialSubmission(test.id, fullName);
+      setSubmissionId(initialSubmission.id);
+      setTestStartTime(Date.now());
+      setCurrentScreen('playing');
+      resetTimer(); // Reset timer for the first question
+    } catch (error) {
+      console.error("Gagal memulai tes:", error);
+      setNameError("Gagal memulai tes. Silakan coba lagi."); // Show generic error
+      setCurrentScreen('nameInput');
+    }
+  };
   
   useEffect(() => {
-    resetTimer();
-  }, [currentQuestionIndex, resetTimer]);
+    if (currentScreen === 'playing') {
+      resetTimer();
+    }
+  }, [currentQuestionIndex, currentScreen, resetTimer]);
 
   const handleTimeOut = useCallback(() => {
-    // Record as unanswered implicitly (no answer object for this questionId)
-    // or explicitly mark as timed_out if needed by downstream logic
-    // For now, just move to next.
     if (currentQuestionIndex < test.questions.length - 1) {
       setCurrentQuestionIndex(prev => prev + 1);
     } else {
-      // If it's the last question and time runs out, auto-submit
       handleSubmitTestLogic();
     }
-  }, [currentQuestionIndex, test.questions.length]);
+  }, [currentQuestionIndex, test.questions.length, submissionId, fullName, answers, testStartTime, test.id]);
 
 
   useEffect(() => {
-    if (!currentQuestion) return;
+    if (currentScreen !== 'playing' || !currentQuestion) return;
 
     const timer = setInterval(() => {
       setTimeLeft(prevTime => {
@@ -68,10 +91,10 @@ export function TestPlayer({ test }: TestPlayerProps) {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [currentQuestionIndex, currentQuestion, handleTimeOut]);
+  }, [currentScreen, currentQuestionIndex, currentQuestion, handleTimeOut]);
 
 
-  const progress = ((currentQuestionIndex + 1) / test.questions.length) * 100;
+  const progress = test.questions.length > 0 ? ((currentQuestionIndex + 1) / test.questions.length) * 100 : 0;
 
   const handleAnswerChange = (value: string | number) => {
     setAnswers(prevAnswers => {
@@ -83,7 +106,6 @@ export function TestPlayer({ test }: TestPlayerProps) {
       }
       return [...prevAnswers, { questionId: currentQuestion.id, value }];
     });
-    // Optional: reset timer on answer, or just let it run. For now, let it run.
   };
 
   const currentAnswerValue = useMemo(() => {
@@ -103,47 +125,93 @@ export function TestPlayer({ test }: TestPlayerProps) {
     }
   };
   
-  const handleSubmitTestLogic = () => {
+  const handleSubmitTestLogic = async () => {
+    if (!submissionId) {
+      console.error("Submission ID tidak ada saat mengirim tes.");
+      // Potentially redirect to an error page or show a message
+      return;
+    }
+    setCurrentScreen('submitting');
     const endTime = Date.now();
-    const timeTaken = Math.round((endTime - startTime) / 1000);
+    const timeTaken = Math.round((endTime - testStartTime) / 1000);
 
-    const submissionData = {
-      testId: test.id,
+    const submissionUpdateData: Partial<Omit<TestSubmission, 'id' | 'testId' | 'fullName'>> = {
       answers: answers,
       timeTaken: timeTaken,
+      submittedAt: new Date().toISOString(), // Update submission time to final
+      analysisStatus: 'pending_ai', // Will be processed on results page
     };
     
-    const queryParams = new URLSearchParams({
-      data: JSON.stringify(submissionData),
-    }).toString();
-
-    router.push(`/tests/${test.id}/results?${queryParams}`);
+    try {
+      await updateSubmission(submissionId, submissionUpdateData);
+      router.push(`/tests/${test.id}/results/${submissionId}`);
+    } catch (error) {
+      console.error("Gagal mengirim tes:", error);
+      setCurrentScreen('playing'); // Revert to playing screen, show error
+      // Ideally show a toast message here
+    }
   };
-
-  const isAllAnsweredOrSkipped = useMemo(() => {
-    // In this context, "answered" means an answer object exists.
-    // Timer skips mean no answer object.
-    // The dialog warning should be about any unattempted questions.
-    // If all questions have been *seen* (i.e., timer ran out or user navigated past), it's okay.
-    // This logic might need refinement based on strict "all must be answered" vs "all seen"
-    const answeredQuestionIds = new Set(answers.map(a => a.questionId));
-    // For simplicity, we assume if user reaches last question, they've "attempted" all via timer or action.
-    // A stricter check would be: `test.questions.every(q => answeredQuestionIds.has(q.id))`
-    // But with timers, user might not explicitly answer.
-    // The current dialog already handles if not all questions have answers.
-    return true; // Let the dialog handle the actual check of answered questions.
-  }, [answers, test.questions]);
-
+  
   const getUnansweredCount = () => {
+    if (!currentQuestion) return test.questions.length; // If no questions loaded yet
     const answeredQuestionIds = new Set(answers.map(a => a.questionId));
     return test.questions.filter(q => !answeredQuestionIds.has(q.id) || answers.find(a=>a.questionId === q.id)?.value === '').length;
   }
   
   const unansweredCount = getUnansweredCount();
 
+  if (currentScreen === 'nameInput') {
+    return (
+      <Card className="w-full max-w-md mx-auto shadow-xl">
+        <CardHeader className="text-center">
+          <User className="mx-auto h-12 w-12 text-primary mb-3" />
+          <CardTitle className="text-2xl font-headline">Mulai Tes: {test.title}</CardTitle>
+          <CardDescription>Silakan masukkan nama lengkap Anda untuk memulai.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div>
+            <Label htmlFor="fullName">Nama Lengkap</Label>
+            <Input
+              id="fullName"
+              type="text"
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              placeholder="Masukkan nama lengkap Anda"
+              className="mt-1"
+            />
+            {nameError && <p className="text-sm text-destructive mt-1">{nameError}</p>}
+          </div>
+          <Button onClick={handleStartTest} className="w-full">
+            <PlayCircle className="mr-2 h-5 w-5" /> Mulai Tes
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (currentScreen === 'submitting') {
+     return (
+        <div className="flex flex-col items-center justify-center min-h-[300px] text-center">
+            <svg className="animate-spin h-10 w-10 text-primary mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <p className="text-lg text-muted-foreground">{submissionId ? 'Mengirim tes...' : 'Mempersiapkan tes...'}</p>
+        </div>
+    );
+  }
+
 
   if (!currentQuestion) {
-    return <div>Memuat tes...</div>; 
+    return (
+        <div className="flex flex-col items-center justify-center min-h-[300px] text-center">
+            <svg className="animate-spin h-10 w-10 text-primary mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <p className="text-lg text-muted-foreground">Memuat pertanyaan...</p>
+        </div>
+    );
   }
 
   return (
@@ -187,7 +255,7 @@ export function TestPlayer({ test }: TestPlayerProps) {
                 <AlertDialogDescription>
                   {unansweredCount === 0
                     ? "Apakah Anda yakin ingin mengirim jawaban Anda? Anda tidak dapat mengubahnya nanti."
-                    : `Anda belum menjawab ${unansweredCount} pertanyaan. Apakah Anda yakin ingin mengirim?`
+                    : `Anda memiliki ${unansweredCount} pertanyaan yang belum terjawab. Apakah Anda yakin ingin mengirim?`
                   }
                 </AlertDialogDescription>
                 {unansweredCount > 0 && (
@@ -210,4 +278,3 @@ export function TestPlayer({ test }: TestPlayerProps) {
     </div>
   );
 }
-

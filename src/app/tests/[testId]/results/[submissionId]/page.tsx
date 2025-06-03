@@ -43,21 +43,24 @@ async function ResultsContent({ testId, submissionId }: { testId: string, submis
 
       if (aiResult.error) { // Error from within the flow (e.g. AI couldn't generate expected output)
         currentAiError = aiResult.error;
-        submission = await updateSubmission(submissionId, { 
+        const updatedData = await updateSubmission(submissionId, { 
           analysisStatus: 'ai_failed_pending_manual', 
           aiError: currentAiError 
-        }) || submission;
+        });
+        if (updatedData) submission = updatedData;
       } else if (aiResult.psychologicalTraits) {
-        submission = await updateSubmission(submissionId, { 
+        const updatedData = await updateSubmission(submissionId, { 
           analysisStatus: 'ai_completed', 
           psychologicalTraits: aiResult.psychologicalTraits 
-        }) || submission;
+        });
+         if (updatedData) submission = updatedData;
       } else { // Unexpected: no error, no traits
         currentAiError = "Analisis AI tidak menghasilkan output yang diharapkan.";
-        submission = await updateSubmission(submissionId, { 
+        const updatedData = await updateSubmission(submissionId, { 
             analysisStatus: 'ai_failed_pending_manual', 
             aiError: currentAiError 
-        }) || submission;
+        });
+        if (updatedData) submission = updatedData;
       }
     } catch (e) { // Catch errors from the analyzeTestResponses call itself (e.g. network, 503)
       console.error("Error during AI analysis call:", e);
@@ -69,10 +72,11 @@ async function ResultsContent({ testId, submissionId }: { testId: string, submis
           currentAiError = "Waktu tunggu untuk layanan analisis AI habis. Hasil Anda akan ditinjau secara manual.";
         }
       }
-      submission = await updateSubmission(submissionId, { 
+      const updatedData = await updateSubmission(submissionId, { 
         analysisStatus: 'ai_failed_pending_manual', 
         aiError: currentAiError 
-      }) || submission;
+      });
+      if (updatedData) submission = updatedData;
     }
   }
   

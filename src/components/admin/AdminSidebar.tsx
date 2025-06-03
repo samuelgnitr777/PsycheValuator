@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -13,14 +14,16 @@ import {
   SidebarTrigger,
 } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
-import { Home, ListChecks, Users, Settings, LogOut, Brain, FileText } from 'lucide-react';
+import { Home, ListChecks, Users, Settings, LogOut, Brain, FileText, Edit } from 'lucide-react'; // Added Edit icon
 import { Separator } from '@/components/ui/separator';
 import { useAuthContext } from '@/components/AppProviders';
 
 
 const navItems = [
-  { href: '/admin/dashboard', label: 'Dashboard', icon: Home },
-  { href: '/admin/dashboard/tests', label: 'Manage Tests', icon: ListChecks },
+  { href: '/admin/dashboard', label: 'Dasbor', icon: Home },
+  { href: '/admin/dashboard/tests', label: 'Kelola Tes', icon: ListChecks },
+  // Placeholder for Manual Reviews - uncomment and update href when ready
+  // { href: '/admin/dashboard/manual-reviews', label: 'Tinjauan Manual', icon: Edit }, 
   // Future items:
   // { href: '/admin/dashboard/users', label: 'User Data', icon: Users },
   // { href: '/admin/dashboard/settings', label: 'Settings', icon: Settings },
@@ -70,12 +73,12 @@ export function AdminSidebar() {
       <SidebarFooter className="p-2 mt-auto">
          <Button variant="ghost" onClick={handleLogout} className="w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground group-data-[collapsible=icon]:justify-center">
             <LogOut className="h-5 w-5 text-[hsl(var(--accent))]" />
-            <span className="ml-2 group-data-[collapsible=icon]:hidden">Logout</span>
+            <span className="ml-2 group-data-[collapsible=icon]:hidden">Keluar</span>
         </Button>
         <Button variant="ghost" asChild className="w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground group-data-[collapsible=icon]:justify-center">
            <Link href="/">
              <FileText className="h-5 w-5 text-[hsl(var(--accent))]" />
-             <span className="ml-2 group-data-[collapsible=icon]:hidden">View Public Site</span>
+             <span className="ml-2 group-data-[collapsible=icon]:hidden">Lihat Situs Publik</span>
            </Link>
         </Button>
       </SidebarFooter>
