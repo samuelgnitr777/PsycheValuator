@@ -2,7 +2,7 @@
 import { getTestById } from '@/lib/dataService';
 import { TestForm } from '@/components/admin/TestForm';
 import { QuestionList } from '@/components/admin/QuestionList';
-import { updateTestAction, addQuestionAction, updateQuestionAction, deleteQuestionAction } from '../actions';
+import { updateTestAction, addQuestionAction, updateQuestionAction, deleteQuestionAction } from '../../actions';
 import { notFound } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
