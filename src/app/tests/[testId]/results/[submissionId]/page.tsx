@@ -23,10 +23,13 @@ async function ResultsContent({ testId, submissionId }: { testId: string, submis
     notFound();
   }
   
+  console.log('[ResultsContent] Initial submission data:', JSON.stringify(submission, null, 2));
+
+
   // If AI analysis is pending, attempt it
   if (submission.analysisStatus === 'pending_ai') {
     let aiResult: AnalyzeTestResponsesOutput | null = null;
-    let currentAiError: string | null = null; // Holds error messages from AI flow or DB updates
+    let currentAiError: string | null = null; 
 
     try {
       // Step 1: Call AI Analysis
@@ -42,22 +45,22 @@ async function ResultsContent({ testId, submissionId }: { testId: string, submis
 
       // Step 2: Determine payload based on AI result
       let updatePayload: TestSubmissionUpdatePayload = {};
-      if (aiResult.error) { 
-        currentAiError = aiResult.error; // Error from within the AI flow
-        updatePayload = { 
-          analysisStatus: 'ai_failed_pending_manual', 
-          aiError: currentAiError 
+      if (aiResult.error) {
+        currentAiError = aiResult.error; 
+        updatePayload = {
+          analysisStatus: 'ai_failed_pending_manual',
+          aiError: currentAiError
         };
       } else if (aiResult.psychologicalTraits) {
-        updatePayload = { 
-          analysisStatus: 'ai_completed', 
-          psychologicalTraits: aiResult.psychologicalTraits 
+        updatePayload = {
+          analysisStatus: 'ai_completed',
+          psychologicalTraits: aiResult.psychologicalTraits
         };
-      } else { 
+      } else {
         currentAiError = "Analisis AI tidak menghasilkan output yang diharapkan.";
-        updatePayload = { 
-            analysisStatus: 'ai_failed_pending_manual', 
-            aiError: currentAiError 
+        updatePayload = {
+            analysisStatus: 'ai_failed_pending_manual',
+            aiError: currentAiError
         };
       }
 
@@ -67,38 +70,26 @@ async function ResultsContent({ testId, submissionId }: { testId: string, submis
         if (updatedData) {
           submission = updatedData; // Update local submission state with new data
         } else {
-          // This case means updateSubmission succeeded but returned undefined, or no fields were updated.
-          // Re-fetch to ensure `submission` object is fresh, as an error might have occurred silently or RLS prevented return.
-          console.warn(`UpdateSubmission for ${submissionId} with AI results returned no data. Re-fetching.`);
+          console.warn(`UpdateSubmission for ${submissionId} with AI results returned no data. Re-fetching to ensure consistency.`);
           const refreshedSubmission = await getSubmissionById(submissionId);
-          if (refreshedSubmission) submission = refreshedSubmission;
-          else console.error(`CRITICAL: Failed to re-fetch submission ${submissionId} after AI update attempt returned no data.`);
+          if (refreshedSubmission) {
+            submission = refreshedSubmission;
+          } else {
+            console.error(`CRITICAL: Failed to re-fetch submission ${submissionId} after AI update attempt returned no data. Current submission state might be stale.`);
+            // Potentially set an error on the submission object to reflect this to the user if appropriate
+            submission.aiError = submission.aiError ? `${submission.aiError} Gagal menyinkronkan status terbaru.` : "Gagal menyinkronkan status terbaru setelah analisis.";
+          }
         }
       } catch (dbUpdateError) {
         console.error(`Error saving AI analysis results to database for submission ${submissionId}:`, dbUpdateError);
-        currentAiError = `Gagal menyimpan hasil analisis ke database. ${(dbUpdateError as Error).message}. Periksa log server untuk detail.`;
-        // Attempt to update the submission one last time with this database-related error.
-        try {
-            const dbErrorSavePayload: TestSubmissionUpdatePayload = {
-                analysisStatus: 'ai_failed_pending_manual',
-                aiError: currentAiError
-            };
-            const finalUpdateAttempt = await updateSubmission(submissionId, dbErrorSavePayload);
-            if (finalUpdateAttempt) submission = finalUpdateAttempt;
-            else { // If even saving the DB error state fails, log and re-fetch previous state.
-                 console.error(`CRITICAL: Failed to update submission ${submissionId} even with DB save error state.`);
-                 const refreshedSubmission = await getSubmissionById(submissionId); // show last known state
-                 if (refreshedSubmission) submission = refreshedSubmission;
-            }
-        } catch (finalUpdateError) {
-            console.error(`CRITICAL: Final attempt to save DB error state for ${submissionId} also failed:`, finalUpdateError);
-            const refreshedSubmission = await getSubmissionById(submissionId); // show last known state
-            if (refreshedSubmission) submission = refreshedSubmission;
-        }
+        currentAiError = `Gagal menyimpan hasil analisis ke database: ${(dbUpdateError as Error).message}.`;
+        
+        submission.analysisStatus = 'ai_failed_pending_manual';
+        submission.aiError = currentAiError;
       }
-    } catch (aiServiceError) { // Catch errors from the analyzeTestResponses call itself (e.g. network, 503 to Genkit)
+    } catch (aiServiceError) { 
       console.error(`Error during AI service call (analyzeTestResponses) for submission ${submissionId}:`, aiServiceError);
-      currentAiError = "Gagal menghubungi layanan analisis AI. Hasil Anda akan ditinjau secara manual.";
+      currentAiError = "Gagal menghubungi layanan analisis AI.";
       if (aiServiceError instanceof Error) {
         if (aiServiceError.message.includes("503") || aiServiceError.message.toLowerCase().includes("model is overloaded") || aiServiceError.message.toLowerCase().includes("overloaded")) {
           currentAiError = "Layanan analisis AI sedang kelebihan beban. Hasil Anda akan ditinjau secara manual.";
@@ -108,32 +99,34 @@ async function ResultsContent({ testId, submissionId }: { testId: string, submis
           currentAiError = `Layanan AI Error: ${(aiServiceError as Error).message}. Hasil akan ditinjau manual.`;
         }
       }
-      // Attempt to save this AI service error state to the database
+      
+      // Attempt to save this AI service error state to the database, but update local state regardless
       try {
-        const updatedData = await updateSubmission(submissionId, { 
-          analysisStatus: 'ai_failed_pending_manual', 
-          aiError: currentAiError 
-        });
-        if (updatedData) submission = updatedData;
-        else { // If update returns no data, re-fetch.
-            console.warn(`UpdateSubmission for ${submissionId} with AI service error returned no data. Re-fetching.`);
-            const refreshedSubmission = await getSubmissionById(submissionId);
-            if (refreshedSubmission) submission = refreshedSubmission;
+        const errorSavePayload: TestSubmissionUpdatePayload = {
+          analysisStatus: 'ai_failed_pending_manual',
+          aiError: currentAiError
+        };
+        const updatedDataOnError = await updateSubmission(submissionId, errorSavePayload);
+        if (updatedDataOnError) {
+          submission = updatedDataOnError;
+        } else {
+            console.warn(`UpdateSubmission for ${submissionId} with AI service error returned no data. Using locally updated error state.`);
+            submission.analysisStatus = 'ai_failed_pending_manual';
+            submission.aiError = currentAiError;
         }
       } catch (updateErrorOnAiServiceFail) {
          console.error(`Error saving AI service failure status to database for ${submissionId}:`, updateErrorOnAiServiceFail);
-         currentAiError = `${currentAiError} Selain itu, gagal menyimpan status ini ke DB: ${(updateErrorOnAiServiceFail as Error).message}`;
-         // Update local submission's aiError to reflect this, even if not saved to DB, for immediate display.
-         submission = { ...submission, analysisStatus: 'ai_failed_pending_manual', aiError: currentAiError };
-         // No re-fetch here as the primary goal is to show the AI service error + DB save error.
+         submission.analysisStatus = 'ai_failed_pending_manual';
+         submission.aiError = `${currentAiError} Selain itu, gagal menyimpan status ini ke DB: ${(updateErrorOnAiServiceFail as Error).message}`;
       }
     }
+    console.log('[ResultsContent] Submission data after AI processing attempt:', JSON.stringify(submission, null, 2));
   }
   
   return (
     <ResultsDisplay 
       test={test} 
-      submission={submission} // Pass the potentially updated submission object
+      submission={submission} 
     />
   );
 }
@@ -180,4 +173,4 @@ export default function TestResultsPage({ params }: TestResultsPageProps) {
   );
 }
 
-export const dynamic = 'force-dynamic'; 
+export const dynamic = 'force-dynamic';

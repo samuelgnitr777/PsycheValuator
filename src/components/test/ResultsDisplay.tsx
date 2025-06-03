@@ -23,18 +23,28 @@ function formatTime(seconds: number): string {
     timeString += `${minutes} menit`;
   }
   if (remainingSeconds > 0) {
-    if (minutes > 0) timeString += ' '; 
+    if (minutes > 0) timeString += ' ';
     timeString += `${remainingSeconds} detik`;
   }
   if (timeString === '') return '0 detik';
   return timeString;
 }
 
-function formatSubmittedAt(isoString: string): string {
+function formatSubmittedAt(isoStringInput: string | null | undefined): string {
+  if (!isoStringInput || typeof isoStringInput !== 'string' || isoStringInput.trim() === '') {
+    return "Tanggal tidak tersedia";
+  }
   try {
-    return format(new Date(isoString), "dd MMMM yyyy, HH:mm:ss", { locale: indonesiaLocale });
+    const dateObj = new Date(isoStringInput);
+    // Check if date is Invalid Date
+    if (isNaN(dateObj.getTime())) {
+        console.warn("formatSubmittedAt received invalid date string:", isoStringInput);
+        return "Format tanggal tidak valid";
+    }
+    return format(dateObj, "dd MMMM yyyy, HH:mm:ss", { locale: indonesiaLocale });
   } catch (error) {
-    return "Tanggal tidak valid";
+    console.error("Error formatting date:", isoStringInput, error);
+    return "Error format tanggal";
   }
 }
 
@@ -58,15 +68,15 @@ export function ResultsDisplay({ test, submission }: ResultsDisplayProps) {
             </CardHeader>
             <CardContent className="p-2 grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2 text-sm">
                 <div className="flex items-center">
-                    <User className="h-4 w-4 mr-2 text-muted-foreground"/> 
-                    <span className="font-medium mr-1">Nama:</span> {submission.fullName}
+                    <User className="h-4 w-4 mr-2 text-muted-foreground"/>
+                    <span className="font-medium mr-1">Nama:</span> {submission.fullName || "Nama tidak tersedia"}
                 </div>
                  <div className="flex items-center">
-                    <Mail className="h-4 w-4 mr-2 text-muted-foreground"/> 
-                    <span className="font-medium mr-1">Email:</span> {submission.email}
+                    <Mail className="h-4 w-4 mr-2 text-muted-foreground"/>
+                    <span className="font-medium mr-1">Email:</span> {submission.email || "Email tidak tersedia"}
                 </div>
                 <div className="flex items-center md:col-span-2">
-                    <CalendarDays className="h-4 w-4 mr-2 text-muted-foreground"/> 
+                    <CalendarDays className="h-4 w-4 mr-2 text-muted-foreground"/>
                     <span className="font-medium mr-1">Dikirim:</span> {formatSubmittedAt(submission.submittedAt)}
                 </div>
             </CardContent>
@@ -93,7 +103,7 @@ export function ResultsDisplay({ test, submission }: ResultsDisplayProps) {
                 </CardContent>
             </Card>
         </div>
-        
+
         <Separator />
 
         <div>
@@ -112,13 +122,13 @@ export function ResultsDisplay({ test, submission }: ResultsDisplayProps) {
                     <p className="text-sm text-muted-foreground">Harap tunggu sebentar.</p>
                 </CardContent>
             </Card>
-          ) : submission.analysisStatus === 'ai_failed_pending_manual' ? ( 
+          ) : submission.analysisStatus === 'ai_failed_pending_manual' ? (
             <Card className="bg-yellow-50 border-yellow-300">
               <CardContent className="p-4 text-center">
                 <Info className="mx-auto h-8 w-8 text-yellow-500 mb-2" />
                 <p className="text-yellow-700 font-semibold">Analisis Tertunda</p>
                 <p className="text-yellow-600 text-sm">
-                  {submission.aiError || "Terjadi masalah saat membuat analisis otomatis."} 
+                  {submission.aiError || "Terjadi masalah saat membuat analisis otomatis."}
                   Hasil Anda akan ditinjau secara manual oleh tim kami. Terima kasih atas kesabaran Anda.
                 </p>
               </CardContent>
