@@ -1,19 +1,20 @@
+
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Test, UserAnswer, TestSubmission } from '@/types';
+import type { Test, UserAnswer } from '@/types'; // Removed TestSubmission as it's inferred or not directly used as a prop type here
 import { QuestionDisplay } from './QuestionDisplay';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, ArrowRight, CheckCircle, AlertTriangle, User, PlayCircle, Mail, LogOut, ShieldAlert } from 'lucide-react';
+import { ArrowLeft, ArrowRight, CheckCircle, AlertTriangle, User, PlayCircle, Mail, ShieldAlert } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { createInitialSubmission, updateSubmission } from '@/lib/dataService'; 
+import { createInitialSubmission, updateSubmission } from '@/lib/dataService';
 import { useToast } from '@/hooks/use-toast';
-import { useAuthContext } from '@/components/AppProviders'; // Import useAuthContext
+import { useAuthContext } from '@/components/AppProviders';
 
 interface TestPlayerProps {
   test: Test;
@@ -23,7 +24,7 @@ const DEFAULT_TIMER_SECONDS = 30;
 const OPEN_ENDED_TIMER_SECONDS = 120;
 
 export function TestPlayer({ test }: TestPlayerProps) {
-  const { isLoggedIn: isAdminLoggedIn } = useAuthContext(); // Get admin login state
+  const { isLoggedIn: isAdminLoggedIn, logout: adminLogout } = useAuthContext();
   const [currentScreen, setCurrentScreen] = useState<'nameInput' | 'playing' | 'submitting'>('nameInput');
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
@@ -34,7 +35,7 @@ export function TestPlayer({ test }: TestPlayerProps) {
 
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<UserAnswer[]>([]);
-  const [testStartTime, setTestStartTime] = useState<number>(0); 
+  const [testStartTime, setTestStartTime] = useState<number>(0);
   const router = useRouter();
   const [timeLeft, setTimeLeft] = useState(DEFAULT_TIMER_SECONDS);
   const { toast } = useToast();
@@ -47,8 +48,8 @@ export function TestPlayer({ test }: TestPlayerProps) {
     }
   }, [currentQuestion]);
 
-  const validateEmail = (email: string) => {
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  const validateEmail = (emailString: string) => {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailString);
   };
 
   const handleStartTest = async () => {
@@ -69,7 +70,7 @@ export function TestPlayer({ test }: TestPlayerProps) {
       return;
     }
     setFormError('');
-    setCurrentScreen('submitting'); 
+    setCurrentScreen('submitting');
     try {
       console.log(`[TestPlayer] Attempting to create initial submission for: ${fullName}, ${email}`);
       const initialSubmission = await createInitialSubmission(test.id, fullName, email);
@@ -77,67 +78,63 @@ export function TestPlayer({ test }: TestPlayerProps) {
       setSubmissionId(initialSubmission.id);
       setTestStartTime(Date.now());
       setCurrentScreen('playing');
-      resetTimer(); 
+      resetTimer();
     } catch (error) {
       const err = error as Error;
       console.error("[TestPlayer] Gagal memulai tes:", err.message, err.stack);
-      const displayMessage = err.message || "Gagal memulai tes. Silakan coba lagi.";
-      
+      let displayMessage = err.message || "Gagal memulai tes. Silakan coba lagi.";
+
       if (displayMessage.includes("RLS VIOLATION")) {
+        // The detailed RLS message is now constructed within createInitialSubmission
         setRlsErrorMessage(displayMessage);
         setShowRlsErrorDialog(true);
+        // No toast for RLS, dialog is primary.
       } else {
-        setFormError(displayMessage); 
-        toast({ 
+        setFormError(displayMessage);
+        toast({
           title: 'Gagal Memulai Tes',
           description: <div className="whitespace-pre-wrap">{displayMessage}</div>,
           variant: 'destructive',
-          duration: 20000 
+          duration: 10000 // Slightly shorter than RLS instructions
         });
       }
       setCurrentScreen('nameInput');
     }
   };
-  
+
   useEffect(() => {
     if (currentScreen === 'playing') {
       resetTimer();
     }
   }, [currentQuestionIndex, currentScreen, resetTimer]);
 
-  const handleSubmitTestLogic = async () => {
+  const handleSubmitTestLogic = useCallback(async () => {
     if (!submissionId) {
       console.error("Submission ID tidak ada saat mengirim tes.");
       toast({ title: 'Error', description: 'ID Submission tidak ditemukan. Tidak dapat mengirim tes.', variant: 'destructive' });
-      setCurrentScreen('playing'); 
+      setCurrentScreen('playing');
       return;
     }
     setCurrentScreen('submitting');
     const endTime = Date.now();
     const timeTaken = Math.round((endTime - testStartTime) / 1000);
 
-    console.log('[TestPlayer] Answers being submitted:', JSON.stringify(answers, null, 2));
-    console.log(`[TestPlayer] Time taken: ${timeTaken}`);
-
     const submissionUpdateData = {
-      answers: answers, 
+      answers: answers,
       timeTaken: timeTaken,
       submittedAt: new Date().toISOString(),
       analysisStatus: 'pending_ai' as const,
     };
-    
+
     try {
-      const updatedSubmission = await updateSubmission(submissionId, submissionUpdateData);
-      if (!updatedSubmission) {
-        // This case implies update failed to return data, error is thrown from updateSubmission
-      }
+      await updateSubmission(submissionId, submissionUpdateData);
       router.push(`/tests/${test.id}/results/${submissionId}`);
     } catch (error) {
       console.error("[TestPlayer] Gagal mengirim tes:", error);
       toast({ title: 'Error Mengirim Tes', description: (error as Error).message || 'Terjadi kesalahan. Silakan coba lagi.', variant: 'destructive' });
-      setCurrentScreen('playing'); 
+      setCurrentScreen('playing');
     }
-  };
+  }, [submissionId, testStartTime, answers, router, test.id, toast]); // Added toast to dependencies
 
   const handleTimeOut = useCallback(() => {
     if (currentQuestionIndex < test.questions.length - 1) {
@@ -196,13 +193,13 @@ export function TestPlayer({ test }: TestPlayerProps) {
       setCurrentQuestionIndex(prev => prev - 1);
     }
   };
-    
+
   const getUnansweredCount = () => {
-    if (!currentQuestion) return test.questions.length; 
+    if (!currentQuestion) return test.questions.length;
     const answeredQuestionIds = new Set(answers.map(a => a.questionId));
-    return test.questions.filter(q => !answeredQuestionIds.has(q.id) || answers.find(a=>a.questionId === q.id)?.value === '').length;
+    return test.questions.filter(q => !answeredQuestionIds.has(q.id) || String(answers.find(a=>a.questionId === q.id)?.value || "").trim() === '').length;
   }
-  
+
   const unansweredCount = getUnansweredCount();
 
   if (currentScreen === 'nameInput') {
@@ -218,13 +215,7 @@ export function TestPlayer({ test }: TestPlayerProps) {
             <CardTitle className="text-2xl font-headline">Mulai Tes: {test.title}</CardTitle>
             {isAdminLoggedIn ? (
                  <CardDescription className="text-orange-600">
-                 Anda login sebagai Admin. Untuk mengambil tes sebagai pengguna, silakan <Button variant="link" className="p-0 h-auto text-orange-600 underline" onClick={() => {
-                     const { logout } = useAuthContext(); // This won't work here directly, need to call context hook at top level
-                     if (typeof window !== 'undefined') {
-                         localStorage.removeItem('isAdminLoggedIn'); // Direct logout action
-                         router.refresh(); // Refresh to reflect logged out state
-                     }
-                 }}>logout</Button> terlebih dahulu atau gunakan mode penyamaran.
+                 Anda login sebagai Admin. Untuk mengambil tes sebagai pengguna, silakan <Button variant="link" className="p-0 h-auto text-orange-600 underline" onClick={adminLogout}>logout</Button> terlebih dahulu atau gunakan mode penyamaran.
                </CardDescription>
             ) : (
               <CardDescription>Silakan masukkan nama lengkap dan email Anda untuk memulai.</CardDescription>
@@ -379,3 +370,5 @@ export function TestPlayer({ test }: TestPlayerProps) {
     </div>
   );
 }
+
+    
