@@ -1,3 +1,3 @@
 A PsycheValuator
 
-App Created with TypeScript and PostgreSQL as DB Stored on SUPABASE
+App Created with TypeScript and PostgreSQL as DB, Data Stored on SUPABASE
