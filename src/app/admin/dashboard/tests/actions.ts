@@ -80,7 +80,7 @@ export async function addQuestionAction(testId: string, questionData: Omit<Quest
     revalidatePath(`/admin/dashboard/tests/${testId}/edit`); // Revalidate the edit page (questions tab)
     revalidatePath(`/tests/${testId}`); // Revalidate public test page as question count changes
     return { success: true, question: newQuestion };
-  } catch (error)
+  } catch (error) {
     return { success: false, message: error instanceof Error ? error.message : 'Gagal menambah pertanyaan' };
   }
 }
