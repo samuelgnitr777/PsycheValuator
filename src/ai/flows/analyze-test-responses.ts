@@ -1,3 +1,4 @@
+
 'use server';
 
 /**
@@ -27,7 +28,9 @@ const AnalyzeTestResponsesOutputSchema = z.object({
     .string()
     .describe(
       'An analysis of the user responses, providing insights into their psychological traits.'
-    ),
+    )
+    .optional(),
+  error: z.string().optional(),
 });
 export type AnalyzeTestResponsesOutput = z.infer<
   typeof AnalyzeTestResponsesOutputSchema
@@ -36,13 +39,16 @@ export type AnalyzeTestResponsesOutput = z.infer<
 export async function analyzeTestResponses(
   input: AnalyzeTestResponsesInput
 ): Promise<AnalyzeTestResponsesOutput> {
+  // The flow is designed to catch errors and return them within the AnalyzeTestResponsesOutput structure.
   return analyzeTestResponsesFlow(input);
 }
 
 const prompt = ai.definePrompt({
   name: 'analyzeTestResponsesPrompt',
   input: {schema: AnalyzeTestResponsesInputSchema},
-  output: {schema: AnalyzeTestResponsesOutputSchema},
+  // The output schema for the prompt itself should primarily aim for psychologicalTraits.
+  // Errors are handled in the flow's try/catch.
+  output: {schema: z.object({ psychologicalTraits: z.string() }) },
   prompt: `Analyze the following test responses and time taken to respond, providing insights into the test taker\'s psychological traits:
 
 Responses: {{{responses}}}
@@ -60,8 +66,25 @@ const analyzeTestResponsesFlow = ai.defineFlow(
     inputSchema: AnalyzeTestResponsesInputSchema,
     outputSchema: AnalyzeTestResponsesOutputSchema,
   },
-  async input => {
-    const {output} = await prompt(input);
-    return output!;
+  async (input): Promise<AnalyzeTestResponsesOutput> => {
+    try {
+      const {output} = await prompt(input); // This line can throw (e.g. on 503)
+      if (output?.psychologicalTraits) {
+        return { psychologicalTraits: output.psychologicalTraits };
+      }
+      // This case means the prompt succeeded but didn't return the expected data structure.
+      return { error: "Analisis AI tidak menghasilkan output yang diharapkan." };
+    } catch (e) {
+      console.error("Error during AI analysis prompt execution in flow:", e);
+      let errorMessage = "Terjadi kesalahan saat berkomunikasi dengan layanan analisis AI.";
+      if (e instanceof Error) {
+        if (e.message.includes("503 Service Unavailable") || e.message.includes("model is overloaded") || e.message.includes("overloaded")) {
+          errorMessage = "Layanan analisis AI sedang kelebihan beban. Silakan coba lagi nanti.";
+        } else if (e.message.includes("Deadline exceeded")) {
+          errorMessage = "Waktu tunggu untuk layanan analisis AI habis. Silakan coba lagi nanti.";
+        }
+      }
+      return { error: errorMessage };
+    }
   }
 );

@@ -2,16 +2,17 @@
 'use client';
 
 import { Test, TestSubmission } from '@/types';
-import { AnalyzeTestResponsesOutput } from '@/ai/flows/analyze-test-responses';
+import type { AnalyzeTestResponsesOutput } from '@/ai/flows/analyze-test-responses'; // Use 'type' import
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { CheckCircle, Clock, Brain, FileText, Activity } from 'lucide-react';
+import { CheckCircle, Clock, Brain, FileText, Activity, AlertTriangle } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface ResultsDisplayProps {
   test: Test;
   submission: TestSubmission;
-  analysis: AnalyzeTestResponsesOutput | null; 
+  analysisResult: AnalyzeTestResponsesOutput | null; 
+  analysisCallError: string | null;
   isLoadingAnalysis: boolean;
 }
 
@@ -31,7 +32,7 @@ function formatTime(seconds: number): string {
 }
 
 
-export function ResultsDisplay({ test, submission, analysis, isLoadingAnalysis }: ResultsDisplayProps) {
+export function ResultsDisplay({ test, submission, analysisResult, analysisCallError, isLoadingAnalysis }: ResultsDisplayProps) {
   const answersMap = new Map(submission.answers.map(a => [a.questionId, a.value]));
 
   return (
@@ -77,16 +78,36 @@ export function ResultsDisplay({ test, submission, analysis, isLoadingAnalysis }
               <div className="h-4 bg-muted rounded w-5/6 animate-pulse"></div>
               <p className="text-sm text-muted-foreground mt-2">Membuat analisis, harap tunggu...</p>
             </div>
-          ) : analysis?.psychologicalTraits ? (
+          ) : analysisCallError ? ( 
+            <Card className="bg-destructive/10 border-destructive/30">
+              <CardContent className="p-4 text-center">
+                <AlertTriangle className="mx-auto h-8 w-8 text-destructive mb-2" />
+                <p className="text-destructive font-semibold">Gagal Memuat Analisis</p>
+                <p className="text-destructive/80 text-sm">{analysisCallError}</p>
+              </CardContent>
+            </Card>
+          ) : analysisResult?.error ? ( 
+            <Card className="bg-destructive/10 border-destructive/30">
+              <CardContent className="p-4 text-center">
+                <AlertTriangle className="mx-auto h-8 w-8 text-destructive mb-2" />
+                <p className="text-destructive font-semibold">Analisis Tidak Berhasil</p>
+                <p className="text-destructive/80 text-sm">{analysisResult.error}</p>
+              </CardContent>
+            </Card>
+          ) : analysisResult?.psychologicalTraits ? (
             <Card className="bg-background border-primary/30">
                 <CardContent className="p-4">
-                    <p className="whitespace-pre-wrap leading-relaxed text-foreground/90">{analysis.psychologicalTraits}</p>
+                    <p className="whitespace-pre-wrap leading-relaxed text-foreground/90">{analysisResult.psychologicalTraits}</p>
                 </CardContent>
             </Card>
           ) : (
-            <p className="text-muted-foreground p-4 border rounded-md bg-muted/20">
-              Analisis tidak dapat dibuat saat ini.
-            </p>
+            <Card className="bg-muted/20 border">
+              <CardContent className="p-4 text-center">
+                 <p className="text-muted-foreground">
+                  Analisis tidak tersedia saat ini atau tidak dapat dibuat untuk pengiriman ini.
+                </p>
+              </CardContent>
+            </Card>
           )}
         </div>
 
@@ -114,4 +135,3 @@ export function ResultsDisplay({ test, submission, analysis, isLoadingAnalysis }
     </Card>
   );
 }
-

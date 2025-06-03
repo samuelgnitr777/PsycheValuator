@@ -76,14 +76,18 @@ async function ResultsContent({ testId, submissionDataString }: { testId: string
     .join('\n\n');
 
   let analysisResult: AnalyzeTestResponsesOutput | null = null;
+  let analysisCallError: string | null = null; 
   let isLoadingAnalysis = true;
+
   try {
+    // The analyzeTestResponses function itself now returns the structured output { psychologicalTraits?, error? }
     analysisResult = await analyzeTestResponses({
       responses: responsesString,
       timeTaken: submission.timeTaken,
     });
-  } catch (error) {
-    console.error("AI Analysis Error:", error);
+  } catch (error) { // This catch is for unexpected errors if analyzeTestResponses itself throws (e.g. network issue before flow execution)
+    console.error("AI Analysis Call Error:", error);
+    analysisCallError = "Gagal menghubungi layanan analisis. Periksa koneksi Anda dan coba lagi.";
   } finally {
     isLoadingAnalysis = false;
   }
@@ -92,7 +96,8 @@ async function ResultsContent({ testId, submissionDataString }: { testId: string
     <ResultsDisplay 
       test={test} 
       submission={submission} 
-      analysis={analysisResult}
+      analysisResult={analysisResult} 
+      analysisCallError={analysisCallError}
       isLoadingAnalysis={isLoadingAnalysis}
     />
   );
@@ -135,4 +140,3 @@ export default function TestResultsPage({ params, searchParams }: TestResultsPag
 }
 
 export const dynamic = 'force-dynamic';
-
