@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { format, parseISO, isValid } from 'date-fns';
 import { id as indonesiaLocale } from 'date-fns/locale';
 import ManualReviewFormClient from './ManualReviewFormClient';
-import { updateManualReviewAction } from '../actions';
+import { updateManualReviewAction, sendEmailNotificationAction } from '../actions';
 import type { TestSubmission, Question, QuestionOption } from '@/types';
 
 export const dynamic = 'force-dynamic';
@@ -70,7 +70,6 @@ export default async function ManualReviewDetailPage({ params }: { params: { sub
   const test = await getTestByIdAdmin(submission.testId);
 
   if (!test) {
-    // This case should ideally not happen if submission.testId is always valid
     console.error(`Test with ID ${submission.testId} not found for submission ${submission.id}`);
     notFound(); 
   }
@@ -171,9 +170,13 @@ export default async function ManualReviewDetailPage({ params }: { params: { sub
         <div className="md:col-span-1">
           <ManualReviewFormClient
             submissionId={submission.id}
+            submissionEmail={submission.email}
+            submissionFullName={submission.fullName}
+            testTitle={test.title}
             initialNotes={submission.manualAnalysisNotes || ''}
             initialStatus={submission.analysisStatus}
             updateAction={updateManualReviewAction}
+            sendEmailAction={sendEmailNotificationAction}
           />
         </div>
       </div>
