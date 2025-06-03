@@ -34,6 +34,7 @@ export interface TestSubmission {
   id: string; // Unique ID for the submission
   testId: string;
   fullName: string; // User's full name
+  email: string; // User's email address
   answers: UserAnswer[];
   timeTaken: number; // in seconds
   submittedAt: string; // ISO string for submission timestamp
@@ -42,3 +43,4 @@ export interface TestSubmission {
   aiError?: string; // If AI errored (e.g. 503, or flow error)
   manualAnalysisNotes?: string; // For admin's manual review
 }
+

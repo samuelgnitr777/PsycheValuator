@@ -10,7 +10,7 @@ import { Progress } from '@/components/ui/progress';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, ArrowRight, CheckCircle, AlertTriangle, User, PlayCircle } from 'lucide-react';
+import { ArrowLeft, ArrowRight, CheckCircle, AlertTriangle, User, PlayCircle, Mail } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { createInitialSubmission, updateSubmission } from '@/lib/dataService'; // Import submission functions
 
@@ -24,8 +24,9 @@ const OPEN_ENDED_TIMER_SECONDS = 120;
 export function TestPlayer({ test }: TestPlayerProps) {
   const [currentScreen, setCurrentScreen] = useState<'nameInput' | 'playing' | 'submitting'>('nameInput');
   const [fullName, setFullName] = useState('');
+  const [email, setEmail] = useState('');
   const [submissionId, setSubmissionId] = useState<string | null>(null);
-  const [nameError, setNameError] = useState('');
+  const [formError, setFormError] = useState('');
 
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<UserAnswer[]>([]);
@@ -41,22 +42,34 @@ export function TestPlayer({ test }: TestPlayerProps) {
     }
   }, [currentQuestion]);
 
+  const validateEmail = (email: string) => {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  };
+
   const handleStartTest = async () => {
     if (!fullName.trim()) {
-      setNameError('Nama lengkap tidak boleh kosong.');
+      setFormError('Nama lengkap tidak boleh kosong.');
       return;
     }
-    setNameError('');
+    if (!email.trim()) {
+      setFormError('Email tidak boleh kosong.');
+      return;
+    }
+    if (!validateEmail(email)) {
+      setFormError('Format email tidak valid.');
+      return;
+    }
+    setFormError('');
     setCurrentScreen('submitting'); // Show loading while creating submission
     try {
-      const initialSubmission = await createInitialSubmission(test.id, fullName);
+      const initialSubmission = await createInitialSubmission(test.id, fullName, email);
       setSubmissionId(initialSubmission.id);
       setTestStartTime(Date.now());
       setCurrentScreen('playing');
       resetTimer(); // Reset timer for the first question
     } catch (error) {
       console.error("Gagal memulai tes:", error);
-      setNameError("Gagal memulai tes. Silakan coba lagi."); // Show generic error
+      setFormError("Gagal memulai tes. Silakan coba lagi."); // Show generic error
       setCurrentScreen('nameInput');
     }
   };
@@ -67,13 +80,39 @@ export function TestPlayer({ test }: TestPlayerProps) {
     }
   }, [currentQuestionIndex, currentScreen, resetTimer]);
 
+  const handleSubmitTestLogic = async () => {
+    if (!submissionId) {
+      console.error("Submission ID tidak ada saat mengirim tes.");
+      return;
+    }
+    setCurrentScreen('submitting');
+    const endTime = Date.now();
+    const timeTaken = Math.round((endTime - testStartTime) / 1000);
+
+    const submissionUpdateData: Partial<Omit<TestSubmission, 'id' | 'testId' | 'fullName' | 'email'>> = {
+      answers: answers,
+      timeTaken: timeTaken,
+      submittedAt: new Date().toISOString(),
+      analysisStatus: 'pending_ai',
+    };
+    
+    try {
+      await updateSubmission(submissionId, submissionUpdateData);
+      router.push(`/tests/${test.id}/results/${submissionId}`);
+    } catch (error) {
+      console.error("Gagal mengirim tes:", error);
+      setCurrentScreen('playing'); 
+      // Ideally show a toast message here
+    }
+  };
+
   const handleTimeOut = useCallback(() => {
     if (currentQuestionIndex < test.questions.length - 1) {
       setCurrentQuestionIndex(prev => prev + 1);
     } else {
       handleSubmitTestLogic();
     }
-  }, [currentQuestionIndex, test.questions.length, submissionId, fullName, answers, testStartTime, test.id]);
+  }, [currentQuestionIndex, test.questions.length, submissionId, fullName, email, answers, testStartTime, test.id, handleSubmitTestLogic]);
 
 
   useEffect(() => {
@@ -124,34 +163,7 @@ export function TestPlayer({ test }: TestPlayerProps) {
       setCurrentQuestionIndex(prev => prev - 1);
     }
   };
-  
-  const handleSubmitTestLogic = async () => {
-    if (!submissionId) {
-      console.error("Submission ID tidak ada saat mengirim tes.");
-      // Potentially redirect to an error page or show a message
-      return;
-    }
-    setCurrentScreen('submitting');
-    const endTime = Date.now();
-    const timeTaken = Math.round((endTime - testStartTime) / 1000);
-
-    const submissionUpdateData: Partial<Omit<TestSubmission, 'id' | 'testId' | 'fullName'>> = {
-      answers: answers,
-      timeTaken: timeTaken,
-      submittedAt: new Date().toISOString(), // Update submission time to final
-      analysisStatus: 'pending_ai', // Will be processed on results page
-    };
     
-    try {
-      await updateSubmission(submissionId, submissionUpdateData);
-      router.push(`/tests/${test.id}/results/${submissionId}`);
-    } catch (error) {
-      console.error("Gagal mengirim tes:", error);
-      setCurrentScreen('playing'); // Revert to playing screen, show error
-      // Ideally show a toast message here
-    }
-  };
-  
   const getUnansweredCount = () => {
     if (!currentQuestion) return test.questions.length; // If no questions loaded yet
     const answeredQuestionIds = new Set(answers.map(a => a.questionId));
@@ -166,21 +178,38 @@ export function TestPlayer({ test }: TestPlayerProps) {
         <CardHeader className="text-center">
           <User className="mx-auto h-12 w-12 text-primary mb-3" />
           <CardTitle className="text-2xl font-headline">Mulai Tes: {test.title}</CardTitle>
-          <CardDescription>Silakan masukkan nama lengkap Anda untuk memulai.</CardDescription>
+          <CardDescription>Silakan masukkan nama lengkap dan email Anda untuk memulai.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
             <Label htmlFor="fullName">Nama Lengkap</Label>
-            <Input
-              id="fullName"
-              type="text"
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              placeholder="Masukkan nama lengkap Anda"
-              className="mt-1"
-            />
-            {nameError && <p className="text-sm text-destructive mt-1">{nameError}</p>}
+            <div className="relative mt-1">
+              <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                id="fullName"
+                type="text"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                placeholder="Masukkan nama lengkap Anda"
+                className="pl-9"
+              />
+            </div>
           </div>
+          <div>
+            <Label htmlFor="email">Email</Label>
+             <div className="relative mt-1">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="cth: email@example.com"
+                  className="pl-9"
+                />
+              </div>
+          </div>
+          {formError && <p className="text-sm text-destructive mt-1">{formError}</p>}
           <Button onClick={handleStartTest} className="w-full">
             <PlayCircle className="mr-2 h-5 w-5" /> Mulai Tes
           </Button>
@@ -278,3 +307,4 @@ export function TestPlayer({ test }: TestPlayerProps) {
     </div>
   );
 }
+

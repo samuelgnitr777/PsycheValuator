@@ -22,7 +22,6 @@ function handleAdminSupabaseError(error: any, context: string): Error {
         detailedMessage = `Received non-standard, non-serializable error. Check server logs for full details.`;
       }
     }
-    // Log common error properties if available
     if ('name' in error) console.error(`${baseMessage} Error Name: ${error.name}`);
     if ('code' in error) console.error(`${baseMessage} Error Code: ${error.code}`);
     if ('details' in error) console.error(`${baseMessage} Error Details: ${error.details}`);
@@ -170,7 +169,8 @@ export async function getTestByIdAdmin(id: string): Promise<Test | undefined> {
     .maybeSingle();
 
   if (error) {
-    throw handleAdminSupabaseError(error, `fetching test by id ${id}`);
+     console.error(`Supabase admin error fetching test by id ${id}:`, error);
+    throw new Error( (error as any).message || `Failed to fetch test ${id} for admin.`);
   }
   if (!data) return undefined;
 
@@ -235,7 +235,6 @@ export async function updateTestPublicationStatusAdmin(testId: string, isPublish
     throw handleAdminSupabaseError(error, `updating test publication status ${testId}`);
   }
   if (!data) return undefined;
-  // Re-fetch the full test data including questions, as update only returns the updated row from 'tests' table.
   return getTestByIdAdmin(data.id); 
 }
 
@@ -248,7 +247,6 @@ export async function deleteTestAdmin(id: string): Promise<boolean> {
     .eq('test_id', id);
 
   if (questionDeleteError) {
-     // Log but don't throw, attempt to delete the test anyway. Consider if this is the desired behavior.
     console.error(handleAdminSupabaseError(questionDeleteError, `deleting questions for test ${id} (non-fatal)`));
   }
   
@@ -258,13 +256,11 @@ export async function deleteTestAdmin(id: string): Promise<boolean> {
     .eq('id', id);
 
   if (error) {
-    // If the main test deletion fails, this is a more critical error.
     throw handleAdminSupabaseError(error, `deleting test ${id}`);
   }
   return true;
 }
 
-// --- Question Management (Admin) ---
 export async function addQuestionToTestAdmin(testId: string, questionData: Omit<Question, 'id'>): Promise<Question | undefined> {
   const supabaseAdmin = createSupabaseServiceRoleClient();
   const { data: existingQuestions, error: countError } = await supabaseAdmin
@@ -366,12 +362,13 @@ export async function deleteQuestionFromTestAdmin(testId: string, questionId: st
 }
 
 // --- Submission Management (using anon client for public, admin client for admin views if needed) ---
-export async function createInitialSubmission(testId: string, fullName: string): Promise<TestSubmission> {
+export async function createInitialSubmission(testId: string, fullName: string, email: string): Promise<TestSubmission> {
   const { data, error } = await anonSupabaseClient 
     .from('submissions')
     .insert({
       test_id: testId,
       full_name: fullName,
+      email: email,
       answers: [],
       time_taken: 0,
       submitted_at: new Date().toISOString(),
@@ -381,7 +378,6 @@ export async function createInitialSubmission(testId: string, fullName: string):
     .single();
 
   if (error) {
-    // This is an anon operation, so use simpler error handling or a different helper if needed
     console.error('Supabase error creating initial submission:', error);
     throw new Error(error.message || 'Failed to create initial submission. Check RLS policies for anon role on "submissions" table for INSERT.');
   }
@@ -391,7 +387,7 @@ export async function createInitialSubmission(testId: string, fullName: string):
   return data as TestSubmission;
 }
 
-export async function updateSubmission(submissionId: string, submissionData: Partial<Omit<TestSubmission, 'id' | 'testId' | 'fullName'>>): Promise<TestSubmission | undefined> {
+export async function updateSubmission(submissionId: string, submissionData: Partial<Omit<TestSubmission, 'id' | 'testId' | 'fullName' | 'email'>>): Promise<TestSubmission | undefined> {
   const { data, error } = await anonSupabaseClient
     .from('submissions')
     .update({
@@ -428,7 +424,7 @@ export async function getSubmissionById(submissionId: string): Promise<TestSubmi
   return data as TestSubmission | undefined;
 }
 
-export async function updateSubmissionAdmin(submissionId: string, submissionData: Partial<Omit<TestSubmission, 'id' | 'testId' | 'fullName'>>): Promise<TestSubmission | undefined> {
+export async function updateSubmissionAdmin(submissionId: string, submissionData: Partial<Omit<TestSubmission, 'id' | 'testId' | 'fullName' | 'email'>>): Promise<TestSubmission | undefined> {
     const supabaseAdmin = createSupabaseServiceRoleClient();
     const { data, error } = await supabaseAdmin
         .from('submissions')
@@ -494,3 +490,4 @@ export async function getTestById(id: string): Promise<Test | undefined> {
     questions: (data.questions || []).sort((a, b) => (a.order || 0) - (b.order || 0)),
   } as Test;
 }
+

@@ -92,6 +92,7 @@ export interface Database {
           id: string
           test_id: string
           full_name: string
+          email: string // Added email
           answers: Json | null // Corresponds to UserAnswer[]
           time_taken: number
           submitted_at: string
@@ -105,6 +106,7 @@ export interface Database {
           id?: string
           test_id: string
           full_name: string
+          email: string // Added email
           answers?: Json | null
           time_taken: number
           submitted_at?: string
@@ -118,6 +120,7 @@ export interface Database {
           id?: string
           test_id?: string
           full_name?: string
+          email?: string // Added email
           answers?: Json | null
           time_taken?: number
           submitted_at?: string
@@ -151,3 +154,4 @@ export interface Database {
     }
   }
 }
+

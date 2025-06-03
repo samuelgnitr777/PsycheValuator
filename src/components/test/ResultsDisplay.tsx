@@ -3,7 +3,7 @@
 
 import { Test, TestSubmission } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { CheckCircle, Clock, Brain, FileText, Activity, AlertTriangle, User, CalendarDays, Info } from 'lucide-react';
+import { CheckCircle, Clock, Brain, FileText, Activity, AlertTriangle, User, CalendarDays, Info, Mail } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { format } from 'date-fns';
@@ -23,7 +23,7 @@ function formatTime(seconds: number): string {
     timeString += `${minutes} menit`;
   }
   if (remainingSeconds > 0) {
-    if (minutes > 0) timeString += ' '; // No 'dan' for brevity
+    if (minutes > 0) timeString += ' '; 
     timeString += `${remainingSeconds} detik`;
   }
   if (timeString === '') return '0 detik';
@@ -61,7 +61,11 @@ export function ResultsDisplay({ test, submission }: ResultsDisplayProps) {
                     <User className="h-4 w-4 mr-2 text-muted-foreground"/> 
                     <span className="font-medium mr-1">Nama:</span> {submission.fullName}
                 </div>
-                <div className="flex items-center">
+                 <div className="flex items-center">
+                    <Mail className="h-4 w-4 mr-2 text-muted-foreground"/> 
+                    <span className="font-medium mr-1">Email:</span> {submission.email}
+                </div>
+                <div className="flex items-center md:col-span-2">
                     <CalendarDays className="h-4 w-4 mr-2 text-muted-foreground"/> 
                     <span className="font-medium mr-1">Dikirim:</span> {formatSubmittedAt(submission.submittedAt)}
                 </div>
@@ -162,3 +166,4 @@ export function ResultsDisplay({ test, submission }: ResultsDisplayProps) {
     </Card>
   );
 }
+
