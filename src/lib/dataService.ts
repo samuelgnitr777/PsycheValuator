@@ -404,38 +404,35 @@ export async function createInitialSubmission(testId: string, fullName: string, 
 export async function updateSubmission(submissionId: string, submissionData: TestSubmissionUpdatePayload): Promise<TestSubmission | undefined> {
   const supabaseService = createSupabaseServiceRoleClient();
 
-  // First, check if the submission exists
-  const existingSubmission = await getSubmissionById(submissionId); // Use anon client to check existence (RLS might apply)
+  const { data: existingSubmission, error: checkError } = await supabaseService
+    .from('submissions')
+    .select('id')
+    .eq('id', submissionId)
+    .maybeSingle();
+
+  if (checkError) {
+    throw handleAdminSupabaseError(checkError, `checking existence of submission ${submissionId} before update`);
+  }
+
   if (!existingSubmission) {
-    const errorMessage = `Submission with ID ${submissionId} not found. Failed to update.`;
+    const errorMessage = `Submission with ID ${submissionId} not found. Cannot update a non-existent submission.`;
+    console.error(errorMessage);
     throw new Error(errorMessage);
   }
 
-  const updatePayload: TestSubmissionUpdatePayload = {};
-  // Only include fields in the payload if they are explicitly provided in submissionData
+  const updatePayload: Partial<TestSubmission> = {};
   if (submissionData.answers !== undefined) updatePayload.answers = submissionData.answers;
   if (submissionData.time_taken !== undefined) updatePayload.time_taken = submissionData.time_taken;
   if (submissionData.submitted_at !== undefined) updatePayload.submitted_at = submissionData.submitted_at;
   if (submissionData.analysis_status !== undefined) updatePayload.analysis_status = submissionData.analysis_status;
   
-  // For fields that can be explicitly set to null (e.g. clearing a value)
   if (submissionData.hasOwnProperty('psychological_traits')) updatePayload.psychological_traits = submissionData.psychological_traits;
   if (submissionData.hasOwnProperty('ai_error')) updatePayload.ai_error = submissionData.ai_error;
   if (submissionData.hasOwnProperty('manual_analysis_notes')) updatePayload.manual_analysis_notes = submissionData.manual_analysis_notes;
 
   if (Object.keys(updatePayload).length === 0) {
     console.warn(`updateSubmission called for ${submissionId} with no updatable fields. Returning current submission state.`);
-    // Fetch and return current state if no fields to update.
-    // This might not be ideal, consider if an error should be thrown or if this is valid.
-    // For now, let's assume it's better to avoid an empty update call if possible.
-    // However, the function is expected to update, so we might need to fetch.
-    // For simplicity, we'll let Supabase handle an empty update object if it occurs,
-    // or return current data if we decide to fetch it here.
-    // The crucial part is not to send { answers: undefined } if answers wasn't in submissionData.
-    // If the payload is truly empty, it's safer to just return or throw.
-    // For this iteration, let's fetch if the payload to update is empty.
-     const currentState = await getSubmissionById(submissionId); // Using anon client, might need service for consistency
-     return currentState;
+    return getSubmissionById(submissionId); // Fetch current state if no fields to update
   }
 
   const { data, error } = await supabaseService
@@ -446,12 +443,14 @@ export async function updateSubmission(submissionId: string, submissionData: Tes
     .maybeSingle();
 
   if (error) {
-    const context = `updating submission ${submissionId} (service client)`;
-    throw handleAdminSupabaseError(error, context); 
+    throw handleAdminSupabaseError(error, `updating submission ${submissionId}`);
   }
   
-  if (!data && !error) { 
-    const errorMessage = `Failed to update submission ${submissionId} or retrieve it after update. The submission ID might not exist.`;
+  if (!data) { // If no Supabase error, but data is null, it's likely an RLS SELECT issue or update made row unselectable
+    const errorMessage = `Submission ${submissionId} was targeted for update (and was confirmed to exist), but no data was returned after the operation. ` +
+                         `This strongly indicates an RLS (Row Level Security) SELECT policy is preventing the current client (service_role or anon fallback) from viewing the row after the update, ` +
+                         `or the update itself was silently prevented by an RLS UPDATE policy's WITH CHECK clause. ` +
+                         `If using anon client due to missing service key, check RLS policies for the 'anon' role. If service_role is used, this scenario is highly unusual and suggests a complex DB interaction.`;
     console.error(errorMessage);
     throw new Error(errorMessage);
   }
@@ -485,14 +484,22 @@ export async function getSubmissionById(submissionId: string): Promise<TestSubmi
 export async function updateSubmissionAdmin(submissionId: string, submissionData: TestSubmissionUpdatePayload): Promise<TestSubmission | undefined> {
     const supabaseAdmin = createSupabaseServiceRoleClient();
 
-    // First, check if the submission exists using the admin client
-    const { data: existingSubmission, error: checkError } = await supabaseAdmin.from('submissions').select('id').eq('id', submissionId).maybeSingle();
-    if (checkError) throw handleAdminSupabaseError(checkError, `checking existence of submission ${submissionId} for admin update`);
+    const { data: existingSubmission, error: checkError } = await supabaseAdmin
+      .from('submissions')
+      .select('id')
+      .eq('id', submissionId)
+      .maybeSingle();
+
+    if (checkError) {
+        throw handleAdminSupabaseError(checkError, `checking existence of submission ${submissionId} for admin update`);
+    }
     if (!existingSubmission) {
-        throw new Error(`Submission with ID ${submissionId} not found. Failed to update (admin).`);
+        const errorMessage = `Submission with ID ${submissionId} not found. Cannot update a non-existent submission (admin).`;
+        console.error(errorMessage);
+        throw new Error(errorMessage);
     }
 
-    const updatePayload: TestSubmissionUpdatePayload = {};
+    const updatePayload: Partial<TestSubmission> = {};
     if (submissionData.answers !== undefined) updatePayload.answers = submissionData.answers;
     if (submissionData.time_taken !== undefined) updatePayload.time_taken = submissionData.time_taken;
     if (submissionData.submitted_at !== undefined) updatePayload.submitted_at = submissionData.submitted_at;
@@ -503,8 +510,7 @@ export async function updateSubmissionAdmin(submissionId: string, submissionData
     if (submissionData.hasOwnProperty('manual_analysis_notes')) updatePayload.manual_analysis_notes = submissionData.manual_analysis_notes;
     
     if (Object.keys(updatePayload).length === 0) {
-      console.warn(`updateSubmissionAdmin called for ${submissionId} with no updatable fields.`);
-      // Fetch and return current state if no fields to update.
+      console.warn(`updateSubmissionAdmin called for ${submissionId} with no updatable fields. Fetching current state.`);
       const { data: currentData, error: currentError } = await supabaseAdmin.from('submissions').select('*').eq('id', submissionId).maybeSingle();
       if(currentError) throw handleAdminSupabaseError(currentError, `fetching current submission ${submissionId} in empty admin update`);
       return currentData as TestSubmission | undefined;
@@ -520,8 +526,13 @@ export async function updateSubmissionAdmin(submissionId: string, submissionData
     if (error) {
         throw handleAdminSupabaseError(error, `updating submission ${submissionId} (admin)`);
     }
-    if (!data && !error) { 
-        console.warn(`Admin update for submission ${submissionId} returned no data. Submission might not exist.`);
+    if (!data) { 
+        const errorMessage = `Admin update for submission ${submissionId} (confirmed to exist) returned no data. ` +
+                             `This strongly indicates an RLS (Row Level Security) SELECT policy is preventing the current client (service_role or anon fallback) from viewing the row after the update. ` +
+                             `If service_role is used (key configured), this is highly unusual as it bypasses RLS. ` +
+                             `If anon client is used due to missing service key, check RLS SELECT policies for 'anon'.`;
+        console.error(errorMessage);
+        throw new Error(errorMessage);
     }
     return data as TestSubmission | undefined;
 }
