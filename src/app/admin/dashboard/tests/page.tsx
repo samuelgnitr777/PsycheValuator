@@ -1,4 +1,5 @@
 
+
 import Link from 'next/link';
 import { getTests } from '@/lib/dataService';
 import { Button } from '@/components/ui/button';
@@ -7,6 +8,8 @@ import { PlusCircle, ListChecks } from 'lucide-react';
 import { TestListTable } from '@/components/admin/TestListTable';
 import { deleteTestAction } from './actions';
 import Image from 'next/image';
+
+export const dynamic = 'force-dynamic'; // Ensure fresh data on each load
 
 export default async function ManageTestsPage() {
   const tests = await getTests();
@@ -61,4 +64,5 @@ export default async function ManageTestsPage() {
     </div>
   );
 }
+
 

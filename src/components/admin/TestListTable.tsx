@@ -2,6 +2,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Test } from '@/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
@@ -20,11 +21,13 @@ interface TestListTableProps {
 
 export function TestListTable({ tests, onDeleteTest }: TestListTableProps) {
   const { toast } = useToast();
+  const router = useRouter();
 
   const handleDelete = async (testId: string, testTitle: string) => {
     const result = await onDeleteTest(testId);
     if (result.success) {
       toast({ title: 'Tes Dihapus', description: `Tes "${testTitle}" telah berhasil dihapus.` });
+      router.refresh(); // Force refresh
     } else {
       toast({ title: 'Error Menghapus Tes', description: result.message || 'Tidak dapat menghapus tes.', variant: 'destructive' });
     }
@@ -37,6 +40,7 @@ export function TestListTable({ tests, onDeleteTest }: TestListTableProps) {
         title: 'Status Publikasi Diperbarui', 
         description: `Tes "${testTitle}" sekarang ${result.test.isPublished ? 'diterbitkan' : 'draft'}.` 
       });
+      router.refresh(); // Force refresh to reflect publication status change
     } else {
       toast({ title: 'Error', description: result.message || 'Tidak dapat memperbarui status publikasi.', variant: 'destructive' });
     }
@@ -113,3 +117,4 @@ export function TestListTable({ tests, onDeleteTest }: TestListTableProps) {
     </Table>
   );
 }
+

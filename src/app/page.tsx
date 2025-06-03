@@ -1,4 +1,5 @@
 
+
 import Link from 'next/link';
 import { getTests } from '@/lib/dataService';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -6,6 +7,8 @@ import { Button } from '@/components/ui/button';
 import { ArrowRight, CheckSquare } from 'lucide-react';
 import Header from '@/components/layout/Header';
 import Image from 'next/image';
+
+export const dynamic = 'force-dynamic'; // Ensure fresh data on each load
 
 export default async function HomePage() {
   const allTests = await getTests();
@@ -72,3 +75,4 @@ export default async function HomePage() {
     </div>
   );
 }
+

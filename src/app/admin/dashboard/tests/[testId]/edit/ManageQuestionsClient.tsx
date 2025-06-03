@@ -1,5 +1,7 @@
+
 'use client';
 
+import { useRouter } from 'next/navigation';
 import { QuestionList } from '@/components/admin/QuestionList';
 import type { QuestionFormValues } from '@/components/admin/QuestionForm';
 import type { Test, Question } from '@/types';
@@ -17,15 +19,40 @@ export default function ManageQuestionsClient({
   updateQuestionAction, 
   deleteQuestionAction 
 }: ManageQuestionsClientProps) {
-  // The QuestionList component itself handles client-side interactions (modals, submissions)
-  // and calls these server actions. The revalidation in server actions should update the UI.
+  const router = useRouter();
+
+  const handleAddQuestion = async (testId: string, data: QuestionFormValues) => {
+    const result = await addQuestionAction(testId, data);
+    if (result.success) {
+      router.refresh(); // Force refresh to get new question list
+    }
+    return result; // Return result for QuestionList to handle toast
+  };
+
+  const handleUpdateQuestion = async (testId: string, questionId: string, data: Partial<QuestionFormValues>) => {
+    const result = await updateQuestionAction(testId, questionId, data);
+    if (result.success) {
+      router.refresh(); // Force refresh
+    }
+    return result;
+  };
+
+  const handleDeleteQuestion = async (testId: string, questionId: string) => {
+    const result = await deleteQuestionAction(testId, questionId);
+    if (result.success) {
+      router.refresh(); // Force refresh
+    }
+    return result;
+  };
+
   return (
     <QuestionList
       testId={test.id}
       questions={test.questions}
-      onAddQuestion={addQuestionAction}
-      onUpdateQuestion={updateQuestionAction}
-      onDeleteQuestion={deleteQuestionAction}
+      onAddQuestion={handleAddQuestion}
+      onUpdateQuestion={handleUpdateQuestion}
+      onDeleteQuestion={handleDeleteQuestion}
     />
   );
 }
+

@@ -52,6 +52,7 @@ export function QuestionList({ testId, questions, onAddQuestion, onUpdateQuestio
     if (result.success) {
       toast({ title: 'Pertanyaan Ditambahkan', description: 'Pertanyaan baru telah ditambahkan ke tes.' });
       setIsAddModalOpen(false);
+      // router.refresh() is called in ManageQuestionsClient
     } else {
       toast({ title: 'Error Menambah Pertanyaan', description: result.message || 'Tidak dapat menambahkan pertanyaan.', variant: 'destructive' });
     }
@@ -66,6 +67,7 @@ export function QuestionList({ testId, questions, onAddQuestion, onUpdateQuestio
       toast({ title: 'Pertanyaan Diperbarui', description: 'Pertanyaan telah diperbarui.' });
       setIsEditModalOpen(false);
       setEditingQuestion(undefined);
+      // router.refresh() is called in ManageQuestionsClient
     } else {
       toast({ title: 'Error Memperbarui Pertanyaan', description: result.message || 'Tidak dapat memperbarui pertanyaan.', variant: 'destructive' });
     }
@@ -73,9 +75,11 @@ export function QuestionList({ testId, questions, onAddQuestion, onUpdateQuestio
   };
 
   const handleDelete = async (questionId: string) => {
+    // No need to set submitting state for delete as it's usually quick
     const result = await onDeleteQuestion(testId, questionId);
     if (result.success) {
       toast({ title: 'Pertanyaan Dihapus', description: 'Pertanyaan telah dihapus dari tes.' });
+      // router.refresh() is called in ManageQuestionsClient
     } else {
       toast({ title: 'Error Menghapus Pertanyaan', description: result.message || 'Tidak dapat menghapus pertanyaan.', variant: 'destructive' });
     }
@@ -203,3 +207,4 @@ export function QuestionList({ testId, questions, onAddQuestion, onUpdateQuestio
     </Card>
   );
 }
+

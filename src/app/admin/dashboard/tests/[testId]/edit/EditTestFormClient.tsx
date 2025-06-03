@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -23,8 +24,7 @@ export default function EditTestFormClient({ initialTest, updateTestAction }: Ed
 
     if (result.success && result.test) {
       toast({ title: 'Test Updated', description: `"${result.test.title}" has been successfully updated.` });
-      // No navigation needed, stay on page. Title might need dynamic update if displayed in parent.
-      // router.refresh(); // Or revalidatePath in action handles this
+      router.refresh(); // Refresh to ensure title updates if displayed higher up or for consistency
     } else {
       toast({ title: 'Error Updating Test', description: result.message || 'Could not update the test.', variant: 'destructive' });
     }
@@ -39,3 +39,4 @@ export default function EditTestFormClient({ initialTest, updateTestAction }: Ed
     />
   );
 }
+
