@@ -1,238 +1,225 @@
 
 import type { Test, Question, QuestionOption, TestSubmission } from '@/types';
 
-// In-memory store for tests - replace with a database in production
-let tests: Test[] = [
-  {
-    id: 'test-1',
-    title: 'Penilaian Kepribadian Pengantar',
-    description: 'Penilaian singkat untuk memahami sifat-sifat dasar kepribadian. Tes ini berisi 20 pertanyaan.',
-    isPublished: true,
-    questions: [
-      { id: 'q1-1', text: 'Seberapa terbuka Anda menganggap diri Anda?', type: 'rating-scale', scaleMin: 1, scaleMax: 5, minLabel: 'Sangat Tertutup', maxLabel: 'Sangat Terbuka' },
-      { id: 'q1-2', text: 'Aktivitas mana yang Anda sukai di akhir pekan?', type: 'multiple-choice', options: [ { id: 'opt1-2-1', text: 'Membaca buku di rumah' }, { id: 'opt1-2-2', text: 'Menghadiri pertemuan sosial' }, { id: 'opt1-2-3', text: 'Menjelajahi alam' } ] },
-      { id: 'q1-3', text: 'Deskripsikan situasi menantang yang baru-baru ini Anda hadapi dan bagaimana Anda menanganinya.', type: 'open-ended' },
-      { id: 'q1-4', text: 'Seberapa sering Anda merasa stres dalam seminggu?', type: 'rating-scale', scaleMin: 1, scaleMax: 5, minLabel: 'Jarang', maxLabel: 'Sangat Sering' },
-      { id: 'q1-5', text: 'Buatlah sebuah kalimat yang menggambarkan pagi ideal Anda.', type: 'open-ended' },
-      { id: 'q1-6', text: 'Manakah yang lebih penting bagi Anda dalam sebuah pekerjaan?', type: 'multiple-choice', options: [ { id: 'opt1-6-1', text: 'Gaji tinggi' }, { id: 'opt1-6-2', text: 'Lingkungan kerja yang baik' }, { id: 'opt1-6-3', text: 'Kesempatan berkembang' } ] },
-      { id: 'q1-7', text: 'Seberapa penting kejujuran bagi Anda?', type: 'rating-scale', scaleMin: 1, scaleMax: 7, minLabel: 'Tidak penting', maxLabel: 'Sangat penting' },
-      { id: 'q1-8', text: 'Tuliskan satu kata yang paling menggambarkan diri Anda.', type: 'open-ended' },
-      { id: 'q1-9', text: 'Apakah Anda lebih suka bekerja sendiri atau dalam tim?', type: 'multiple-choice', options: [ { id: 'opt1-9-1', text: 'Sendiri' }, { id: 'opt1-9-2', text: 'Dalam tim' } ] },
-      { id: 'q1-10', text: 'Bagaimana Anda menilai kemampuan Anda dalam beradaptasi dengan perubahan?', type: 'rating-scale', scaleMin: 1, scaleMax: 5, minLabel: 'Buruk', maxLabel: 'Sangat Baik' },
-      { id: 'q1-11', text: 'Buatlah kalimat tentang impian terbesar Anda.', type: 'open-ended' },
-      { id: 'q1-12', text: 'Warna apa yang paling Anda sukai?', type: 'multiple-choice', options: [ { id: 'opt1-12-1', text: 'Biru' }, { id: 'opt1-12-2', text: 'Merah' }, { id: 'opt1-12-3', text: 'Hijau' }, { id: 'opt1-12-4', text: 'Kuning' } ] },
-      { id: 'q1-13', text: 'Seberapa optimistis Anda tentang masa depan?', type: 'rating-scale', scaleMin: 1, scaleMax: 5, minLabel: 'Sangat Pesimis', maxLabel: 'Sangat Optimis' },
-      { id: 'q1-14', text: 'Apa hobi utama Anda? Jelaskan dalam satu kalimat.', type: 'open-ended' },
-      { id: 'q1-15', text: 'Ketika menghadapi masalah, Anda cenderung:', type: 'multiple-choice', options: [ { id: 'opt1-15-1', text: 'Mencari solusi segera' }, { id: 'opt1-15-2', text: 'Memikirkannya mendalam terlebih dahulu' }, { id: 'opt1-15-3', text: 'Meminta bantuan orang lain' } ] },
-      { id: 'q1-16', text: 'Bagaimana Anda menilai tingkat kesabaran Anda?', type: 'rating-scale', scaleMin: 1, scaleMax: 5, minLabel: 'Sangat Tidak Sabar', maxLabel: 'Sangat Sabar' },
-      { id: 'q1-17', text: 'Buatlah satu kalimat tentang apa arti kebahagiaan bagi Anda.', type: 'open-ended' },
-      { id: 'q1-18', text: 'Manakah yang lebih Anda hargai: logika atau emosi?', type: 'multiple-choice', options: [ { id: 'opt1-18-1', text: 'Logika' }, { id: 'opt1-18-2', text: 'Emosi' }, { id: 'opt1-18-3', text: 'Keduanya seimbang' } ] },
-      { id: 'q1-19', text: 'Seberapa teratur Anda dalam menjalani kehidupan sehari-hari?', type: 'rating-scale', scaleMin: 1, scaleMax: 5, minLabel: 'Sangat Tidak Teratur', maxLabel: 'Sangat Teratur' },
-      { id: 'q1-20', text: 'Tuliskan satu kalimat motivasi yang sering Anda ingat.', type: 'open-ended' },
-    ],
-  },
-  {
-    id: 'test-2',
-    title: 'Evaluasi Manajemen Stres',
-    description: 'Memahami mekanisme koping Anda di bawah tekanan. Tes ini sekarang berisi 3 pertanyaan awal.',
-    isPublished: true,
-    questions: [
-      { id: 'q2-1', text: 'Seberapa sering Anda merasa kewalahan dengan tanggung jawab Anda?', type: 'rating-scale', scaleMin: 1, scaleMax: 5, minLabel: 'Jarang', maxLabel: 'Sangat Sering' },
-      { id: 'q2-2', text: 'Apa cara utama Anda dalam menghadapi stres?', type: 'open-ended' },
-      { id: 'q2-3', text: 'Manakah dari berikut ini yang paling membantu Anda rileks saat stres?', type: 'multiple-choice', options: [ {id: 'opt2-3-1', text: 'Mendengarkan musik'}, {id: 'opt2-3-2', text: 'Olahraga ringan'}, {id: 'opt2-3-3', text: 'Meditasi atau mindfulness'} ] },
-    ],
-  },
-];
+// In-memory store is removed. Database interaction will be implemented here.
+// const tests: Test[] = [...]; // Removed
+// let submissions: TestSubmission[] = []; // Removed
 
-// In-memory store for submissions - replace with a database in production
-let submissions: TestSubmission[] = [];
-
-// Helper to generate unique IDs
+// Helper to generate unique IDs - might be handled by DB (e.g., SERIAL or UUID)
+// but can still be useful for client-side optimistic updates or if IDs are generated before DB insert.
 const generateId = (prefix: string): string => `${prefix}-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+
+// --- Database Client Setup (Example Placeholder) ---
+// You would typically initialize your PostgreSQL client here (e.g., using 'pg' library)
+// import { Pool } from 'pg';
+// const pool = new Pool({
+//   connectionString: process.env.POSTGRES_URL, // Ensure this is set in your environment variables
+// });
+// 
+// const query = async (text: string, params?: any[]) => {
+//   const start = Date.now();
+//   const res = await pool.query(text, params);
+//   const duration = Date.now() - start;
+//   console.log('executed query', { text, duration, rows: res.rowCount });
+//   return res;
+// };
+// ----------------------------------------------------
+
 
 // Test Management
 export async function getTests(): Promise<Test[]> {
-  // TODO: Replace with database query
-  // Example: const { data, error } = await supabase.from('tests').select('*');
-  return Promise.resolve(JSON.parse(JSON.stringify(tests)));
+  // TODO: Implement PostgreSQL query to fetch all tests.
+  // Example with 'pg':
+  // const result = await query('SELECT * FROM tests ORDER BY title ASC');
+  // return result.rows.map(row => ({ ...row, questions: JSON.parse(row.questions) })); // Assuming questions are stored as JSONB
+  console.warn('dataService.getTests: PostgreSQL implementation needed.');
+  return Promise.resolve([]); // Placeholder
 }
 
 export async function getTestById(id: string): Promise<Test | undefined> {
-  // TODO: Replace with database query
-  // Example: const { data, error } = await supabase.from('tests').select('*').eq('id', id).single();
-  const test = tests.find(test => test.id === id);
-  return Promise.resolve(test ? JSON.parse(JSON.stringify(test)) : undefined);
+  // TODO: Implement PostgreSQL query to fetch a test by its ID.
+  // Example with 'pg':
+  // const result = await query('SELECT * FROM tests WHERE id = $1', [id]);
+  // if (result.rows.length === 0) return undefined;
+  // const row = result.rows[0];
+  // return { ...row, questions: JSON.parse(row.questions) }; // Assuming questions are stored as JSONB
+  console.warn(`dataService.getTestById: PostgreSQL implementation needed for id ${id}.`);
+  return Promise.resolve(undefined); // Placeholder
 }
 
 export async function createTest(testData: Omit<Test, 'id' | 'questions' | 'isPublished'>): Promise<Test> {
-  // TODO: Replace with database insert operation
-  // Example: const { data, error } = await supabase.from('tests').insert([{ ...testData, questions: [], isPublished: true }]).select();
-  const newTest: Test = {
+  const newTestId = generateId('test'); // Or let DB generate it
+  // TODO: Implement PostgreSQL INSERT operation.
+  // Example with 'pg':
+  // const result = await query(
+  //   'INSERT INTO tests (id, title, description, questions, "isPublished") VALUES ($1, $2, $3, $4, $5) RETURNING *',
+  //   [newTestId, testData.title, testData.description, JSON.stringify([]), false] // Default empty questions, not published
+  // );
+  // const row = result.rows[0];
+  // return { ...row, questions: JSON.parse(row.questions) };
+  console.warn('dataService.createTest: PostgreSQL implementation needed.');
+  const placeholderTest: Test = {
     ...testData,
-    id: generateId('test'),
+    id: newTestId,
     questions: [],
-    isPublished: true, // Default to published
+    isPublished: false,
   };
-  tests.push(newTest);
-  return Promise.resolve(JSON.parse(JSON.stringify(newTest)));
+  return Promise.resolve(placeholderTest); // Placeholder
 }
 
 export async function updateTest(id: string, testData: Partial<Omit<Test, 'id' | 'questions' | 'isPublished'>>): Promise<Test | undefined> {
-  // TODO: Replace with database update operation
-  // Example: const { data, error } = await supabase.from('tests').update(testData).eq('id', id).select();
-  const testIndex = tests.findIndex(test => test.id === id);
-  if (testIndex === -1) return Promise.resolve(undefined);
-  tests[testIndex] = { ...tests[testIndex], ...testData };
-  return Promise.resolve(JSON.parse(JSON.stringify(tests[testIndex])));
+  // TODO: Implement PostgreSQL UPDATE operation for test details (title, description).
+  // Example with 'pg':
+  // const result = await query(
+  //   'UPDATE tests SET title = $1, description = $2 WHERE id = $3 RETURNING *',
+  //   [testData.title, testData.description, id]
+  // );
+  // if (result.rows.length === 0) return undefined;
+  // const row = result.rows[0];
+  // return { ...row, questions: JSON.parse(row.questions) };
+  console.warn(`dataService.updateTest: PostgreSQL implementation needed for id ${id}.`);
+  // For placeholder, we'd need to fetch first, then update, which is complex for a placeholder.
+  // Returning a generic object or undefined.
+  const existingTest = await getTestById(id); // Simulating fetch
+  if (!existingTest) return undefined;
+  const updatedPlaceholder: Test = { ...existingTest, ...testData, questions: existingTest.questions, isPublished: existingTest.isPublished };
+  return Promise.resolve(updatedPlaceholder); // Placeholder
 }
 
 export async function updateTestPublicationStatus(testId: string, isPublished: boolean): Promise<Test | undefined> {
-  // TODO: Replace with database update operation
-  // Example: const { data, error } = await supabase.from('tests').update({ isPublished }).eq('id', testId).select();
-  const testIndex = tests.findIndex(test => test.id === testId);
-  if (testIndex === -1) return Promise.resolve(undefined);
-  tests[testIndex].isPublished = isPublished;
-  return Promise.resolve(JSON.parse(JSON.stringify(tests[testIndex])));
+  // TODO: Implement PostgreSQL UPDATE operation for 'isPublished' status.
+  // Example with 'pg':
+  // const result = await query(
+  //   'UPDATE tests SET "isPublished" = $1 WHERE id = $2 RETURNING *',
+  //   [isPublished, testId]
+  // );
+  // if (result.rows.length === 0) return undefined;
+  // const row = result.rows[0];
+  // return { ...row, questions: JSON.parse(row.questions) };
+  console.warn(`dataService.updateTestPublicationStatus: PostgreSQL implementation needed for id ${testId}.`);
+  const existingTest = await getTestById(testId); // Simulating fetch
+  if (!existingTest) return undefined;
+  const updatedPlaceholder: Test = { ...existingTest, isPublished };
+  return Promise.resolve(updatedPlaceholder); // Placeholder
 }
 
 export async function deleteTest(id: string): Promise<boolean> {
-  // TODO: Replace with database delete operation
-  // Example: const { error } = await supabase.from('tests').delete().eq('id', id);
-  // return !error;
-  const initialLength = tests.length;
-  tests = tests.filter(test => test.id !== id);
-  return Promise.resolve(tests.length < initialLength);
+  // TODO: Implement PostgreSQL DELETE operation.
+  // Example with 'pg':
+  // const result = await query('DELETE FROM tests WHERE id = $1', [id]);
+  // return result.rowCount > 0;
+  console.warn(`dataService.deleteTest: PostgreSQL implementation needed for id ${id}.`);
+  return Promise.resolve(false); // Placeholder
 }
 
 export async function addQuestionToTest(testId: string, questionData: Omit<Question, 'id'>): Promise<Question | undefined> {
-  // TODO: This logic will be more complex with a database, potentially involving updating a JSONB field or related table.
-  const test = tests.find(t => t.id === testId);
-  if (!test) return Promise.resolve(undefined);
-
+  // TODO: This is more complex. You might store questions in a JSONB column in the 'tests' table,
+  // or have a separate 'questions' table linked to 'tests'.
+  // If JSONB: Fetch test, parse questions, add new, stringify, update test.
+  // If separate table: INSERT into 'questions' table.
+  console.warn(`dataService.addQuestionToTest: PostgreSQL implementation needed for testId ${testId}.`);
   const newQuestionId = generateId(`q-${testId}`);
-  const newQuestion: Question = {
+  const placeholderQuestion: Question = {
     id: newQuestionId,
     text: questionData.text,
     type: questionData.type,
+    options: questionData.type === 'multiple-choice' ? (questionData.options || []).map((opt, idx) => ({ id: opt.id || generateId(`opt-${newQuestionId}-${idx}`), text: opt.text })) : undefined,
+    scaleMin: questionData.type === 'rating-scale' ? questionData.scaleMin : undefined,
+    scaleMax: questionData.type === 'rating-scale' ? questionData.scaleMax : undefined,
+    minLabel: questionData.type === 'rating-scale' ? questionData.minLabel : undefined,
+    maxLabel: questionData.type === 'rating-scale' ? questionData.maxLabel : undefined,
   };
-
-  if (questionData.type === 'multiple-choice' && questionData.options) {
-    newQuestion.options = questionData.options.map((opt, index) => ({
-      id: opt.id || generateId(`opt-${newQuestionId}-${index}`),
-      text: opt.text,
-    }));
-  } else if (questionData.type === 'rating-scale') {
-    newQuestion.scaleMin = questionData.scaleMin;
-    newQuestion.scaleMax = questionData.scaleMax;
-    newQuestion.minLabel = questionData.minLabel;
-    newQuestion.maxLabel = questionData.maxLabel;
-  }
-
-  test.questions.push(newQuestion);
-  // TODO: With a database, you'd update the test record with the new questions array.
-  // Example: await supabase.from('tests').update({ questions: test.questions }).eq('id', testId);
-  return Promise.resolve(JSON.parse(JSON.stringify(newQuestion)));
+  // This would require fetching the test, adding the question to its questions array, then saving.
+  // For placeholder simplicity, we'll just return the new question.
+  return Promise.resolve(placeholderQuestion); // Placeholder
 }
 
 export async function updateQuestionInTest(testId: string, questionId: string, questionData: Partial<Omit<Question, 'id'>>): Promise<Question | undefined> {
-  // TODO: This logic will be more complex with a database.
-  const test = tests.find(t => t.id === testId);
-  if (!test) return Promise.resolve(undefined);
-  const questionIndex = test.questions.findIndex(q => q.id === questionId);
-  if (questionIndex === -1) return Promise.resolve(undefined);
-
-  const existingQuestion = test.questions[questionIndex];
-  const updatedQuestion: Question = {
-    ...existingQuestion,
-    ...questionData,
-    id: questionId, 
+  // TODO: Similar to addQuestionToTest, depends on how questions are stored.
+  // If JSONB: Fetch test, find question, update, stringify, update test.
+  // If separate table: UPDATE 'questions' table where id = questionId AND test_id = testId.
+  console.warn(`dataService.updateQuestionInTest: PostgreSQL implementation needed for testId ${testId}, questionId ${questionId}.`);
+  // Placeholder logic is complex as it needs to simulate finding and updating.
+  const placeholderUpdatedQuestion: Question = {
+    id: questionId,
+    text: questionData.text || "Updated Text",
+    type: questionData.type || "multiple-choice",
+    // ... fill other fields based on questionData or defaults
   };
-
-  if (updatedQuestion.type === 'multiple-choice') {
-    updatedQuestion.options = (questionData.options || existingQuestion.options || []).map((opt, index) => ({
-      id: opt.id || generateId(`opt-${questionId}-${index}`), // Ensure new options get IDs
-      text: opt.text,
-    }));
-    // Clear fields not relevant to multiple-choice
-    delete updatedQuestion.scaleMin;
-    delete updatedQuestion.scaleMax;
-    delete updatedQuestion.minLabel;
-    delete updatedQuestion.maxLabel;
-  } else if (updatedQuestion.type === 'rating-scale') {
-    // Ensure rating scale fields are present or default
-    updatedQuestion.scaleMin = questionData.scaleMin ?? existingQuestion.scaleMin ?? 1;
-    updatedQuestion.scaleMax = questionData.scaleMax ?? existingQuestion.scaleMax ?? 5;
-    updatedQuestion.minLabel = questionData.minLabel ?? existingQuestion.minLabel ?? '';
-    updatedQuestion.maxLabel = questionData.maxLabel ?? existingQuestion.maxLabel ?? '';
-    delete updatedQuestion.options; // Clear fields not relevant to rating-scale
-  } else if (updatedQuestion.type === 'open-ended') {
-    // Clear fields not relevant to open-ended
-    delete updatedQuestion.options;
-    delete updatedQuestion.scaleMin;
-    delete updatedQuestion.scaleMax;
-    delete updatedQuestion.minLabel;
-    delete updatedQuestion.maxLabel;
-  }
-
-  test.questions[questionIndex] = updatedQuestion;
-  // TODO: With a database, you'd update the test record with the modified questions array.
-  // Example: await supabase.from('tests').update({ questions: test.questions }).eq('id', testId);
-  return Promise.resolve(JSON.parse(JSON.stringify(test.questions[questionIndex])));
+  return Promise.resolve(placeholderUpdatedQuestion); // Placeholder
 }
 
 export async function deleteQuestionFromTest(testId: string, questionId: string): Promise<boolean> {
-  // TODO: This logic will be more complex with a database.
-  const test = tests.find(t => t.id === testId);
-  if (!test) return Promise.resolve(false);
-  const initialLength = test.questions.length;
-  test.questions = test.questions.filter(q => q.id !== questionId);
-  // TODO: With a database, you'd update the test record.
-  // Example: await supabase.from('tests').update({ questions: test.questions }).eq('id', testId);
-  return Promise.resolve(test.questions.length < initialLength);
+  // TODO: Similar to add/updateQuestion, depends on storage.
+  // If JSONB: Fetch, filter out question, stringify, update.
+  // If separate table: DELETE from 'questions' where id = questionId AND test_id = testId.
+  console.warn(`dataService.deleteQuestionFromTest: PostgreSQL implementation needed for testId ${testId}, questionId ${questionId}.`);
+  return Promise.resolve(false); // Placeholder
 }
 
 // Submission Management
 export async function createInitialSubmission(testId: string, fullName: string): Promise<TestSubmission> {
-  // TODO: Replace with database insert operation
-  // Example: const { data, error } = await supabase.from('submissions').insert([{ testId, fullName, submittedAt: new Date().toISOString(), analysisStatus: 'pending_ai', answers: [], timeTaken: 0 }]).select();
-  const newSubmission: TestSubmission = {
-    id: generateId('sub'),
+  const newSubmissionId = generateId('sub'); // Or let DB generate it
+  // TODO: Implement PostgreSQL INSERT operation for a new submission.
+  // Example with 'pg':
+  // const result = await query(
+  //   'INSERT INTO submissions (id, test_id, full_name, answers, time_taken, submitted_at, analysis_status) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
+  //   [newSubmissionId, testId, fullName, JSON.stringify([]), 0, new Date().toISOString(), 'pending_ai']
+  // );
+  // const row = result.rows[0];
+  // return { ...row, answers: JSON.parse(row.answers) };
+  console.warn('dataService.createInitialSubmission: PostgreSQL implementation needed.');
+  const placeholderSubmission: TestSubmission = {
+    id: newSubmissionId,
     testId,
     fullName,
     answers: [],
     timeTaken: 0,
     submittedAt: new Date().toISOString(),
-    analysisStatus: 'pending_ai', 
+    analysisStatus: 'pending_ai',
   };
-  submissions.push(newSubmission);
-  return Promise.resolve(JSON.parse(JSON.stringify(newSubmission)));
+  return Promise.resolve(placeholderSubmission); // Placeholder
 }
 
 export async function updateSubmission(submissionId: string, data: Partial<Omit<TestSubmission, 'id' | 'testId' | 'fullName'>>): Promise<TestSubmission | undefined> {
-  // TODO: Replace with database update operation
-  // Example: const { data: dbData, error } = await supabase.from('submissions').update(data).eq('id', submissionId).select();
-  const submissionIndex = submissions.findIndex(s => s.id === submissionId);
-  if (submissionIndex === -1) return Promise.resolve(undefined);
-  
-  submissions[submissionIndex] = {
-    ...submissions[submissionIndex],
-    ...data,
-    ...(data.answers && { answers: data.answers }), 
+  // TODO: Implement PostgreSQL UPDATE operation for a submission.
+  // You'll need to build the SET clause dynamically or list all updatable fields.
+  // Example with 'pg' (simplified for answers and status):
+  // const result = await query(
+  //   'UPDATE submissions SET answers = $1, time_taken = $2, submitted_at = $3, analysis_status = $4, psychological_traits = $5, ai_error = $6 WHERE id = $7 RETURNING *',
+  //   [JSON.stringify(data.answers), data.timeTaken, data.submittedAt, data.analysisStatus, data.psychologicalTraits, data.aiError, submissionId]
+  // );
+  // if (result.rows.length === 0) return undefined;
+  // const row = result.rows[0];
+  // return { ...row, answers: JSON.parse(row.answers) };
+  console.warn(`dataService.updateSubmission: PostgreSQL implementation needed for id ${submissionId}.`);
+  // Placeholder: fetch, update, return.
+  const existingSubmission = await getSubmissionById(submissionId);
+  if (!existingSubmission) return undefined;
+  const updatedPlaceholder: TestSubmission = {
+     ...existingSubmission,
+     ...data,
+     answers: data.answers || existingSubmission.answers, // ensure answers array is handled
   };
-  return Promise.resolve(JSON.parse(JSON.stringify(submissions[submissionIndex])));
+  return Promise.resolve(updatedPlaceholder); // Placeholder
 }
 
 export async function getSubmissionById(submissionId: string): Promise<TestSubmission | undefined> {
-  // TODO: Replace with database query
-  // Example: const { data, error } = await supabase.from('submissions').select('*').eq('id', submissionId).single();
-  const submission = submissions.find(s => s.id === submissionId);
-  return Promise.resolve(submission ? JSON.parse(JSON.stringify(submission)) : undefined);
+  // TODO: Implement PostgreSQL query to fetch a submission by ID.
+  // Example with 'pg':
+  // const result = await query('SELECT * FROM submissions WHERE id = $1', [submissionId]);
+  // if (result.rows.length === 0) return undefined;
+  // const row = result.rows[0];
+  // return { ...row, answers: JSON.parse(row.answers) };
+  console.warn(`dataService.getSubmissionById: PostgreSQL implementation needed for id ${submissionId}.`);
+  return Promise.resolve(undefined); // Placeholder
 }
 
 export async function getAllSubmissions(): Promise<TestSubmission[]> {
-  // TODO: Replace with database query
-  // Example: const { data, error } = await supabase.from('submissions').select('*');
-  return Promise.resolve(JSON.parse(JSON.stringify(submissions)));
+  // TODO: Implement PostgreSQL query to fetch all submissions.
+  // Example with 'pg':
+  // const result = await query('SELECT * FROM submissions ORDER BY "submittedAt" DESC');
+  // return result.rows.map(row => ({ ...row, answers: JSON.parse(row.answers) }));
+  console.warn('dataService.getAllSubmissions: PostgreSQL implementation needed.');
+  return Promise.resolve([]); // Placeholder
 }
-
-    
