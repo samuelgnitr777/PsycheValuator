@@ -48,18 +48,25 @@ let tests: Test[] = [
 let submissions: TestSubmission[] = [];
 
 // Helper to generate unique IDs
-const generateId = (prefix: string) => `${prefix}-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+const generateId = (prefix: string): string => `${prefix}-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
 
 // Test Management
 export async function getTests(): Promise<Test[]> {
-  return JSON.parse(JSON.stringify(tests));
+  // TODO: Replace with database query
+  // Example: const { data, error } = await supabase.from('tests').select('*');
+  return Promise.resolve(JSON.parse(JSON.stringify(tests)));
 }
 
 export async function getTestById(id: string): Promise<Test | undefined> {
-  return JSON.parse(JSON.stringify(tests.find(test => test.id === id)));
+  // TODO: Replace with database query
+  // Example: const { data, error } = await supabase.from('tests').select('*').eq('id', id).single();
+  const test = tests.find(test => test.id === id);
+  return Promise.resolve(test ? JSON.parse(JSON.stringify(test)) : undefined);
 }
 
 export async function createTest(testData: Omit<Test, 'id' | 'questions' | 'isPublished'>): Promise<Test> {
+  // TODO: Replace with database insert operation
+  // Example: const { data, error } = await supabase.from('tests').insert([{ ...testData, questions: [], isPublished: true }]).select();
   const newTest: Test = {
     ...testData,
     id: generateId('test'),
@@ -67,32 +74,40 @@ export async function createTest(testData: Omit<Test, 'id' | 'questions' | 'isPu
     isPublished: true, // Default to published
   };
   tests.push(newTest);
-  return JSON.parse(JSON.stringify(newTest));
+  return Promise.resolve(JSON.parse(JSON.stringify(newTest)));
 }
 
 export async function updateTest(id: string, testData: Partial<Omit<Test, 'id' | 'questions' | 'isPublished'>>): Promise<Test | undefined> {
+  // TODO: Replace with database update operation
+  // Example: const { data, error } = await supabase.from('tests').update(testData).eq('id', id).select();
   const testIndex = tests.findIndex(test => test.id === id);
-  if (testIndex === -1) return undefined;
+  if (testIndex === -1) return Promise.resolve(undefined);
   tests[testIndex] = { ...tests[testIndex], ...testData };
-  return JSON.parse(JSON.stringify(tests[testIndex]));
+  return Promise.resolve(JSON.parse(JSON.stringify(tests[testIndex])));
 }
 
 export async function updateTestPublicationStatus(testId: string, isPublished: boolean): Promise<Test | undefined> {
+  // TODO: Replace with database update operation
+  // Example: const { data, error } = await supabase.from('tests').update({ isPublished }).eq('id', testId).select();
   const testIndex = tests.findIndex(test => test.id === testId);
-  if (testIndex === -1) return undefined;
+  if (testIndex === -1) return Promise.resolve(undefined);
   tests[testIndex].isPublished = isPublished;
-  return JSON.parse(JSON.stringify(tests[testIndex]));
+  return Promise.resolve(JSON.parse(JSON.stringify(tests[testIndex])));
 }
 
 export async function deleteTest(id: string): Promise<boolean> {
+  // TODO: Replace with database delete operation
+  // Example: const { error } = await supabase.from('tests').delete().eq('id', id);
+  // return !error;
   const initialLength = tests.length;
   tests = tests.filter(test => test.id !== id);
-  return tests.length < initialLength;
+  return Promise.resolve(tests.length < initialLength);
 }
 
 export async function addQuestionToTest(testId: string, questionData: Omit<Question, 'id'>): Promise<Question | undefined> {
+  // TODO: This logic will be more complex with a database, potentially involving updating a JSONB field or related table.
   const test = tests.find(t => t.id === testId);
-  if (!test) return undefined;
+  if (!test) return Promise.resolve(undefined);
 
   const newQuestionId = generateId(`q-${testId}`);
   const newQuestion: Question = {
@@ -114,14 +129,17 @@ export async function addQuestionToTest(testId: string, questionData: Omit<Quest
   }
 
   test.questions.push(newQuestion);
-  return JSON.parse(JSON.stringify(newQuestion));
+  // TODO: With a database, you'd update the test record with the new questions array.
+  // Example: await supabase.from('tests').update({ questions: test.questions }).eq('id', testId);
+  return Promise.resolve(JSON.parse(JSON.stringify(newQuestion)));
 }
 
 export async function updateQuestionInTest(testId: string, questionId: string, questionData: Partial<Omit<Question, 'id'>>): Promise<Question | undefined> {
+  // TODO: This logic will be more complex with a database.
   const test = tests.find(t => t.id === testId);
-  if (!test) return undefined;
+  if (!test) return Promise.resolve(undefined);
   const questionIndex = test.questions.findIndex(q => q.id === questionId);
-  if (questionIndex === -1) return undefined;
+  if (questionIndex === -1) return Promise.resolve(undefined);
 
   const existingQuestion = test.questions[questionIndex];
   const updatedQuestion: Question = {
@@ -132,20 +150,23 @@ export async function updateQuestionInTest(testId: string, questionId: string, q
 
   if (updatedQuestion.type === 'multiple-choice') {
     updatedQuestion.options = (questionData.options || existingQuestion.options || []).map((opt, index) => ({
-      id: opt.id || generateId(`opt-${questionId}-${index}`),
+      id: opt.id || generateId(`opt-${questionId}-${index}`), // Ensure new options get IDs
       text: opt.text,
     }));
+    // Clear fields not relevant to multiple-choice
     delete updatedQuestion.scaleMin;
     delete updatedQuestion.scaleMax;
     delete updatedQuestion.minLabel;
     delete updatedQuestion.maxLabel;
   } else if (updatedQuestion.type === 'rating-scale') {
-    updatedQuestion.scaleMin = questionData.scaleMin ?? existingQuestion.scaleMin;
-    updatedQuestion.scaleMax = questionData.scaleMax ?? existingQuestion.scaleMax;
-    updatedQuestion.minLabel = questionData.minLabel ?? existingQuestion.minLabel;
-    updatedQuestion.maxLabel = questionData.maxLabel ?? existingQuestion.maxLabel;
-    delete updatedQuestion.options;
+    // Ensure rating scale fields are present or default
+    updatedQuestion.scaleMin = questionData.scaleMin ?? existingQuestion.scaleMin ?? 1;
+    updatedQuestion.scaleMax = questionData.scaleMax ?? existingQuestion.scaleMax ?? 5;
+    updatedQuestion.minLabel = questionData.minLabel ?? existingQuestion.minLabel ?? '';
+    updatedQuestion.maxLabel = questionData.maxLabel ?? existingQuestion.maxLabel ?? '';
+    delete updatedQuestion.options; // Clear fields not relevant to rating-scale
   } else if (updatedQuestion.type === 'open-ended') {
+    // Clear fields not relevant to open-ended
     delete updatedQuestion.options;
     delete updatedQuestion.scaleMin;
     delete updatedQuestion.scaleMax;
@@ -154,19 +175,26 @@ export async function updateQuestionInTest(testId: string, questionId: string, q
   }
 
   test.questions[questionIndex] = updatedQuestion;
-  return JSON.parse(JSON.stringify(test.questions[questionIndex]));
+  // TODO: With a database, you'd update the test record with the modified questions array.
+  // Example: await supabase.from('tests').update({ questions: test.questions }).eq('id', testId);
+  return Promise.resolve(JSON.parse(JSON.stringify(test.questions[questionIndex])));
 }
 
 export async function deleteQuestionFromTest(testId: string, questionId: string): Promise<boolean> {
+  // TODO: This logic will be more complex with a database.
   const test = tests.find(t => t.id === testId);
-  if (!test) return false;
+  if (!test) return Promise.resolve(false);
   const initialLength = test.questions.length;
   test.questions = test.questions.filter(q => q.id !== questionId);
-  return test.questions.length < initialLength;
+  // TODO: With a database, you'd update the test record.
+  // Example: await supabase.from('tests').update({ questions: test.questions }).eq('id', testId);
+  return Promise.resolve(test.questions.length < initialLength);
 }
 
 // Submission Management
 export async function createInitialSubmission(testId: string, fullName: string): Promise<TestSubmission> {
+  // TODO: Replace with database insert operation
+  // Example: const { data, error } = await supabase.from('submissions').insert([{ testId, fullName, submittedAt: new Date().toISOString(), analysisStatus: 'pending_ai', answers: [], timeTaken: 0 }]).select();
   const newSubmission: TestSubmission = {
     id: generateId('sub'),
     testId,
@@ -177,26 +205,34 @@ export async function createInitialSubmission(testId: string, fullName: string):
     analysisStatus: 'pending_ai', 
   };
   submissions.push(newSubmission);
-  return JSON.parse(JSON.stringify(newSubmission));
+  return Promise.resolve(JSON.parse(JSON.stringify(newSubmission)));
 }
 
 export async function updateSubmission(submissionId: string, data: Partial<Omit<TestSubmission, 'id' | 'testId' | 'fullName'>>): Promise<TestSubmission | undefined> {
+  // TODO: Replace with database update operation
+  // Example: const { data: dbData, error } = await supabase.from('submissions').update(data).eq('id', submissionId).select();
   const submissionIndex = submissions.findIndex(s => s.id === submissionId);
-  if (submissionIndex === -1) return undefined;
+  if (submissionIndex === -1) return Promise.resolve(undefined);
   
   submissions[submissionIndex] = {
     ...submissions[submissionIndex],
     ...data,
     ...(data.answers && { answers: data.answers }), 
   };
-  return JSON.parse(JSON.stringify(submissions[submissionIndex]));
+  return Promise.resolve(JSON.parse(JSON.stringify(submissions[submissionIndex])));
 }
 
 export async function getSubmissionById(submissionId: string): Promise<TestSubmission | undefined> {
+  // TODO: Replace with database query
+  // Example: const { data, error } = await supabase.from('submissions').select('*').eq('id', submissionId).single();
   const submission = submissions.find(s => s.id === submissionId);
-  return submission ? JSON.parse(JSON.stringify(submission)) : undefined;
+  return Promise.resolve(submission ? JSON.parse(JSON.stringify(submission)) : undefined);
 }
 
 export async function getAllSubmissions(): Promise<TestSubmission[]> {
-  return JSON.parse(JSON.stringify(submissions));
+  // TODO: Replace with database query
+  // Example: const { data, error } = await supabase.from('submissions').select('*');
+  return Promise.resolve(JSON.parse(JSON.stringify(submissions)));
 }
+
+    
