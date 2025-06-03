@@ -2,7 +2,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { ArrowRight, ListChecks, Users, BarChart3, Edit } from "lucide-react"; // Added Edit icon
+import { ArrowRight, ListChecks, Users, BarChart3, Edit, ClipboardCheck } from "lucide-react"; 
 import Image from "next/image";
 
 export default function AdminDashboardPage() {
@@ -43,29 +43,30 @@ export default function AdminDashboardPage() {
 
         <Card className="hover:shadow-xl transition-shadow">
           <CardHeader>
-            <Edit className="h-8 w-8 text-[hsl(var(--accent))] mb-2" />
-            <CardTitle className="font-headline">Tinjauan Manual (Segera Hadir)</CardTitle>
-            <CardDescription>Tinjau dan analisis pengiriman tes yang memerlukan evaluasi manual.</CardDescription>
+            <ClipboardCheck className="h-8 w-8 text-[hsl(var(--accent))] mb-2" />
+            <CardTitle className="font-headline">Tinjauan Manual</CardTitle>
+            <CardDescription>Tinjau dan analisis pengiriman tes yang memerlukan evaluasi manual atau tambahan.</CardDescription>
           </CardHeader>
           <CardContent>
-            {/* Update this link when the manual review page is ready */}
-            <Button disabled asChild> 
-              <Link href="#"> 
+            <Button asChild> 
+              <Link href="/admin/dashboard/manual-reviews"> 
                 Ke Tinjauan Manual <ArrowRight className="ml-2 h-4 w-4" />
               </Link>
             </Button>
           </CardContent>
         </Card>
         
-        <Card className="opacity-50 cursor-not-allowed bg-muted/50">
+        <Card className="hover:shadow-xl transition-shadow">
           <CardHeader>
-            <BarChart3 className="h-8 w-8 text-muted-foreground mb-2" />
-            <CardTitle className="font-headline">Lihat Analitik (Segera Hadir)</CardTitle>
+            <BarChart3 className="h-8 w-8 text-[hsl(var(--accent))] mb-2" />
+            <CardTitle className="font-headline">Lihat Analitik</CardTitle>
             <CardDescription>Analisis respons pengguna dan data penyelesaian tes.</CardDescription>
           </CardHeader>
           <CardContent>
-            <Button disabled>
-              Jelajahi Analitik <ArrowRight className="ml-2 h-4 w-4" />
+            <Button asChild>
+              <Link href="/admin/dashboard/analytics">
+                Jelajahi Analitik <ArrowRight className="ml-2 h-4 w-4" />
+              </Link>
             </Button>
           </CardContent>
         </Card>
@@ -86,3 +87,4 @@ export default function AdminDashboardPage() {
     </div>
   );
 }
+

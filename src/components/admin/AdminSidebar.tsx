@@ -14,7 +14,7 @@ import {
   SidebarTrigger,
 } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
-import { Home, ListChecks, Users, Settings, LogOut, Brain, FileText, Edit } from 'lucide-react'; // Added Edit icon
+import { Home, ListChecks, Users, Settings, LogOut, Brain, FileText, Edit, BarChart3, ClipboardCheck } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { useAuthContext } from '@/components/AppProviders';
 
@@ -22,8 +22,8 @@ import { useAuthContext } from '@/components/AppProviders';
 const navItems = [
   { href: '/admin/dashboard', label: 'Dasbor', icon: Home },
   { href: '/admin/dashboard/tests', label: 'Kelola Tes', icon: ListChecks },
-  // Placeholder for Manual Reviews - uncomment and update href when ready
-  // { href: '/admin/dashboard/manual-reviews', label: 'Tinjauan Manual', icon: Edit }, 
+  { href: '/admin/dashboard/manual-reviews', label: 'Tinjauan Manual', icon: ClipboardCheck }, 
+  { href: '/admin/dashboard/analytics', label: 'Analitik', icon: BarChart3 },
   // Future items:
   // { href: '/admin/dashboard/users', label: 'User Data', icon: Users },
   // { href: '/admin/dashboard/settings', label: 'Settings', icon: Settings },
