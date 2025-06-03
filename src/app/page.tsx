@@ -1,18 +1,16 @@
 
-
 import Link from 'next/link';
-import { getTests } from '@/lib/dataService';
+import { getPublishedTests } from '@/lib/dataService'; // Use specific public function
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, CheckSquare } from 'lucide-react';
 import Header from '@/components/layout/Header';
 import Image from 'next/image';
 
-export const dynamic = 'force-dynamic'; // Ensure fresh data on each load
+export const dynamic = 'force-dynamic'; 
 
 export default async function HomePage() {
-  const allTests = await getTests();
-  const publishedTests = allTests.filter(test => test.isPublished);
+  const publishedTests = await getPublishedTests(); // Fetch only published tests
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -75,4 +73,3 @@ export default async function HomePage() {
     </div>
   );
 }
-

@@ -1,14 +1,91 @@
 
-import { supabase } from './supabaseClient';
+import { supabase as anonSupabaseClient, createSupabaseServiceRoleClient, type SupabaseClient } from './supabaseClient';
 import type { Test, Question, QuestionOption, UserAnswer, TestSubmission } from '@/types';
 import { v4 as uuidv4 } from 'uuid';
 
 // Helper to generate ID for QuestionOption
 const generateOptionId = (): string => `opt-${uuidv4()}`;
 
-// --- Test Management ---
-export async function getTests(): Promise<Test[]> {
-  const { data, error } = await supabase
+// --- PUBLIC READ OPERATIONS (using anon client) ---
+
+export async function getPublishedTests(): Promise<Test[]> {
+  const { data, error } = await anonSupabaseClient
+    .from('tests')
+    .select(`
+      id,
+      title,
+      description,
+      isPublished,
+      questions (
+        id,
+        test_id,
+        text,
+        type,
+        options,
+        scale_min,
+        scale_max,
+        min_label,
+        max_label,
+        order
+      )
+    `)
+    .eq('isPublished', true) // Only fetch published tests
+    .order('title', { ascending: true });
+
+  if (error) {
+    console.error('Supabase error fetching published tests:', error);
+    throw new Error(error.message || 'Failed to fetch published tests. Check RLS policies for anon role on "tests" and "questions" tables for SELECT, ensuring "isPublished" filter is allowed.');
+  }
+  return (data || []).map(test => ({
+    ...test,
+    questions: (test.questions || []).sort((a, b) => (a.order || 0) - (b.order || 0)), // Ensure questions are sorted by order
+  })) as Test[];
+}
+
+export async function getPublishedTestById(id: string): Promise<Test | undefined> {
+  const { data, error } = await anonSupabaseClient
+    .from('tests')
+    .select(`
+      id,
+      title,
+      description,
+      isPublished,
+      questions (
+        id,
+        test_id,
+        text,
+        type,
+        options,
+        scale_min,
+        scale_max,
+        min_label,
+        max_label,
+        order
+      )
+    `)
+    .eq('id', id)
+    .eq('isPublished', true) // Ensure only published test is fetched
+    .order('order', { foreignTable: 'questions', ascending: true })
+    .maybeSingle();
+
+  if (error) {
+    console.error(`Supabase error fetching published test by id ${id}:`, error);
+    throw new Error(error.message || `Failed to fetch published test ${id}. Check RLS policies.`);
+  }
+  if (!data) return undefined;
+
+  return {
+    ...data,
+    questions: (data.questions || []).sort((a, b) => (a.order || 0) - (b.order || 0)),
+  } as Test;
+}
+
+// --- ADMIN OPERATIONS (using service_role client) ---
+// These functions will now use the service_role client internally.
+
+export async function getAllTestsAdmin(): Promise<Test[]> {
+  const supabaseAdmin = createSupabaseServiceRoleClient();
+  const { data, error } = await supabaseAdmin
     .from('tests')
     .select(`
       id,
@@ -31,17 +108,18 @@ export async function getTests(): Promise<Test[]> {
     .order('title', { ascending: true });
 
   if (error) {
-    console.error('Supabase error fetching tests:', error);
-    throw new Error(error.message || 'Failed to fetch tests from Supabase. Check server logs, RLS policies, and ensure tables exist.');
+    console.error('Supabase admin error fetching all tests:', error);
+    throw new Error(error.message || 'Failed to fetch all tests for admin. Check service_role key.');
   }
   return (data || []).map(test => ({
     ...test,
-    questions: test.questions || [],
+    questions: (test.questions || []).sort((a, b) => (a.order || 0) - (b.order || 0)),
   })) as Test[];
 }
 
-export async function getTestById(id: string): Promise<Test | undefined> {
-  const { data, error } = await supabase
+export async function getTestByIdAdmin(id: string): Promise<Test | undefined> {
+  const supabaseAdmin = createSupabaseServiceRoleClient();
+  const { data, error } = await supabaseAdmin
     .from('tests')
     .select(`
       id,
@@ -66,77 +144,64 @@ export async function getTestById(id: string): Promise<Test | undefined> {
     .maybeSingle();
 
   if (error) {
-    console.error(`Supabase error fetching test by id ${id}:`, error);
-    throw new Error(error.message || `Failed to fetch test ${id}. Check RLS policies.`);
+    console.error(`Supabase admin error fetching test by id ${id}:`, error);
+    throw new Error(error.message || `Failed to fetch test ${id} for admin.`);
   }
   if (!data) return undefined;
 
   return {
     ...data,
-    questions: data.questions || [],
+    questions: (data.questions || []).sort((a, b) => (a.order || 0) - (b.order || 0)),
   } as Test;
 }
 
-export async function createTest(testData: Omit<Test, 'id' | 'questions' | 'isPublished'>): Promise<Test> {
-  const { data, error } = await supabase
+
+export async function createTestAdmin(testData: Omit<Test, 'id' | 'questions' | 'isPublished'>): Promise<Test> {
+  const supabaseAdmin = createSupabaseServiceRoleClient();
+  const { data, error } = await supabaseAdmin
     .from('tests')
     .insert({
       title: testData.title,
       description: testData.description,
-      isPublished: false, // Default to not published
+      isPublished: false, 
     })
     .select()
     .single();
 
   if (error) {
-    console.error('Supabase error creating test:', error);
-    throw new Error(error.message || 'Failed to create test. Check RLS policies for insert.');
+    console.error('Supabase admin error creating test:', error);
+    throw new Error(error.message || 'Failed to create test (admin).');
   }
   if (!data) {
-    throw new Error('Failed to create test: No data returned from Supabase.');
+    throw new Error('Failed to create test (admin): No data returned.');
   }
   return { ...data, questions: [] } as Test;
 }
 
-export async function updateTest(id: string, testData: Partial<Omit<Test, 'id' | 'questions' | 'isPublished'>>): Promise<Test | undefined> {
-  const { data, error } = await supabase
+export async function updateTestAdmin(id: string, testData: Partial<Omit<Test, 'id' | 'questions' | 'isPublished'>>): Promise<Test | undefined> {
+  const supabaseAdmin = createSupabaseServiceRoleClient();
+  const { data, error } = await supabaseAdmin
     .from('tests')
     .update({
       title: testData.title,
       description: testData.description,
     })
     .eq('id', id)
-    .select(`
-      id,
-      title,
-      description,
-      isPublished,
-      questions (
-        id,
-        test_id,
-        text,
-        type,
-        options,
-        scale_min,
-        scale_max,
-        min_label,
-        max_label,
-        order
-      )
-    `)
+    .select(`id, title, description, isPublished, questions (id, text, type, options, scale_min, scale_max, min_label, max_label, order)`) // Re-fetch to include questions
     .order('order', { foreignTable: 'questions', ascending: true })
     .maybeSingle();
     
   if (error) {
-    console.error(`Supabase error updating test ${id}:`, error);
-    throw new Error(error.message || `Failed to update test ${id}. Check RLS policies for update.`);
+    console.error(`Supabase admin error updating test ${id}:`, error);
+    throw new Error(error.message || `Failed to update test ${id} (admin).`);
   }
   if (!data) return undefined;
-  return { ...data, questions: data.questions || [] } as Test;
+  return { ...data, questions: (data.questions || []).sort((a,b) => (a.order || 0) - (b.order || 0)) } as Test;
 }
 
-export async function updateTestPublicationStatus(testId: string, isPublished: boolean): Promise<Test | undefined> {
-  const { data, error } = await supabase
+export async function updateTestPublicationStatusAdmin(testId: string, isPublished: boolean): Promise<Test | undefined> {
+  const supabaseAdmin = createSupabaseServiceRoleClient();
+  const { data, error } = await supabaseAdmin
     .from('tests')
     .update({ isPublished })
     .eq('id', testId)
@@ -144,30 +209,43 @@ export async function updateTestPublicationStatus(testId: string, isPublished: b
     .single();
 
   if (error) {
-    console.error(`Supabase error updating test publication status ${testId}:`, error);
-    throw new Error(error.message || `Failed to update test publication status for ${testId}. Check RLS policies.`);
+    console.error(`Supabase admin error updating test publication status ${testId}:`, error);
+    throw new Error(error.message || `Failed to update test publication status for ${testId} (admin).`);
   }
   if (!data) return undefined;
-  return getTestById(data.id); // Fetch full test data
+  return getTestByIdAdmin(data.id); 
 }
 
-export async function deleteTest(id: string): Promise<boolean> {
-  const { error } = await supabase
+export async function deleteTestAdmin(id: string): Promise<boolean> {
+  const supabaseAdmin = createSupabaseServiceRoleClient();
+  // First, delete associated questions to avoid foreign key constraint violations if cascade is not set
+  const { error: questionDeleteError } = await supabaseAdmin
+    .from('questions')
+    .delete()
+    .eq('test_id', id);
+
+  if (questionDeleteError) {
+    console.error(`Supabase admin error deleting questions for test ${id}:`, questionDeleteError);
+    // Not throwing here, trying to delete the test anyway or handle partial deletion.
+    // For robust error handling, you might want to throw or return a more detailed error.
+  }
+  
+  const { error } = await supabaseAdmin
     .from('tests')
     .delete()
     .eq('id', id);
 
   if (error) {
-    console.error(`Supabase error deleting test ${id}:`, error);
-    // Consider throwing new Error(error.message || `Failed to delete test ${id}. Check RLS policies.`);
+    console.error(`Supabase admin error deleting test ${id}:`, error);
     return false; 
   }
   return true;
 }
 
-// --- Question Management ---
-export async function addQuestionToTest(testId: string, questionData: Omit<Question, 'id'>): Promise<Question | undefined> {
-  const { data: existingQuestions, error: countError } = await supabase
+// --- Question Management (Admin) ---
+export async function addQuestionToTestAdmin(testId: string, questionData: Omit<Question, 'id'>): Promise<Question | undefined> {
+  const supabaseAdmin = createSupabaseServiceRoleClient();
+  const { data: existingQuestions, error: countError } = await supabaseAdmin
     .from('questions')
     .select('order', { count: 'exact' })
     .eq('test_id', testId)
@@ -175,8 +253,8 @@ export async function addQuestionToTest(testId: string, questionData: Omit<Quest
     .limit(1);
 
   if (countError) {
-    console.error('Supabase error fetching question count for ordering:', countError);
-    throw new Error(countError.message || 'Failed to determine question order. Check RLS policies.');
+    console.error('Supabase admin error fetching question count for ordering:', countError);
+    throw new Error(countError.message || 'Failed to determine question order (admin).');
   }
   const maxOrder = existingQuestions && existingQuestions.length > 0 ? (existingQuestions[0].order || 0) : 0;
   const newOrder = maxOrder + 1;
@@ -189,7 +267,7 @@ export async function addQuestionToTest(testId: string, questionData: Omit<Quest
     }));
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('questions')
     .insert({
       test_id: testId,
@@ -206,13 +284,14 @@ export async function addQuestionToTest(testId: string, questionData: Omit<Quest
     .single();
 
   if (error) {
-    console.error(`Supabase error adding question to test ${testId}:`, error);
-    throw new Error(error.message || 'Failed to add question. Check RLS policies for insert.');
+    console.error(`Supabase admin error adding question to test ${testId}:`, error);
+    throw new Error(error.message || 'Failed to add question (admin).');
   }
   return data as Question | undefined;
 }
 
-export async function updateQuestionInTest(testId: string, questionId: string, questionData: Partial<Omit<Question, 'id'>>): Promise<Question | undefined> {
+export async function updateQuestionInTestAdmin(testId: string, questionId: string, questionData: Partial<Omit<Question, 'id'>>): Promise<Question | undefined> {
+  const supabaseAdmin = createSupabaseServiceRoleClient();
   let optionsWithIds: QuestionOption[] | undefined = undefined;
   if (questionData.type === 'multiple-choice' && questionData.options) {
     optionsWithIds = questionData.options.map(opt => ({
@@ -222,7 +301,7 @@ export async function updateQuestionInTest(testId: string, questionId: string, q
   }
 
   const updatePayload: any = { ...questionData };
-  if (optionsWithIds !== undefined) { // only update if options were processed
+  if (optionsWithIds !== undefined) { 
     updatePayload.options = optionsWithIds;
   }
 
@@ -238,7 +317,7 @@ export async function updateQuestionInTest(testId: string, questionId: string, q
     }
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('questions')
     .update(updatePayload)
     .eq('id', questionId)
@@ -247,29 +326,30 @@ export async function updateQuestionInTest(testId: string, questionId: string, q
     .single();
 
   if (error) {
-    console.error(`Supabase error updating question ${questionId} in test ${testId}:`, error);
-    throw new Error(error.message || `Failed to update question ${questionId}. Check RLS policies for update.`);
+    console.error(`Supabase admin error updating question ${questionId} in test ${testId}:`, error);
+    throw new Error(error.message || `Failed to update question ${questionId} (admin).`);
   }
   return data as Question | undefined;
 }
 
-export async function deleteQuestionFromTest(testId: string, questionId: string): Promise<boolean> {
-  const { error } = await supabase
+export async function deleteQuestionFromTestAdmin(testId: string, questionId: string): Promise<boolean> {
+  const supabaseAdmin = createSupabaseServiceRoleClient();
+  const { error } = await supabaseAdmin
     .from('questions')
     .delete()
     .eq('id', questionId)
     .eq('test_id', testId);
 
   if (error) {
-    console.error(`Supabase error deleting question ${questionId} from test ${testId}:`, error);
+    console.error(`Supabase admin error deleting question ${questionId} from test ${testId}:`, error);
     return false;
   }
   return true;
 }
 
-// --- Submission Management ---
+// --- Submission Management (using anon client for public, admin client for admin views if needed) ---
 export async function createInitialSubmission(testId: string, fullName: string): Promise<TestSubmission> {
-  const { data, error } = await supabase
+  const { data, error } = await anonSupabaseClient // Users create submissions as anon
     .from('submissions')
     .insert({
       test_id: testId,
@@ -284,7 +364,7 @@ export async function createInitialSubmission(testId: string, fullName: string):
 
   if (error) {
     console.error('Supabase error creating initial submission:', error);
-    throw new Error(error.message || 'Failed to create initial submission. Check RLS policies for insert.');
+    throw new Error(error.message || 'Failed to create initial submission. Check RLS policies for anon role on "submissions" table for INSERT.');
   }
   if (!data) {
     throw new Error('Failed to create initial submission: No data returned from Supabase.');
@@ -293,13 +373,17 @@ export async function createInitialSubmission(testId: string, fullName: string):
 }
 
 export async function updateSubmission(submissionId: string, submissionData: Partial<Omit<TestSubmission, 'id' | 'testId' | 'fullName'>>): Promise<TestSubmission | undefined> {
-  const { data, error } = await supabase
+  // This function might be called by anon (for answers) or by system/admin (for AI results)
+  // For simplicity, if this update is for AI results/admin notes, it should be a separate admin function.
+  // For now, assuming anon user can update their own submission (e.g. answers, timeTaken).
+  // RLS policy should restrict anon to only update their own recent submission.
+  const { data, error } = await anonSupabaseClient
     .from('submissions')
     .update({
       answers: submissionData.answers,
       time_taken: submissionData.timeTaken,
-      submitted_at: submissionData.submittedAt,
-      analysis_status: submissionData.analysisStatus,
+      submitted_at: submissionData.submittedAt, // User resubmitting or finalizing
+      analysis_status: submissionData.analysisStatus, // AI process might update this
       psychological_traits: submissionData.psychologicalTraits,
       ai_error: submissionData.aiError,
       manual_analysis_notes: submissionData.manualAnalysisNotes,
@@ -310,13 +394,14 @@ export async function updateSubmission(submissionId: string, submissionData: Par
 
   if (error) {
     console.error(`Supabase error updating submission ${submissionId}:`, error);
-    throw new Error(error.message || `Failed to update submission ${submissionId}. Check RLS policies for update.`);
+    throw new Error(error.message || `Failed to update submission ${submissionId}. Check RLS policies for anon role for UPDATE on "submissions".`);
   }
   return data as TestSubmission | undefined;
 }
 
 export async function getSubmissionById(submissionId: string): Promise<TestSubmission | undefined> {
-  const { data, error } = await supabase
+  // Public can view their submission result
+  const { data, error } = await anonSupabaseClient
     .from('submissions')
     .select('*')
     .eq('id', submissionId)
@@ -324,21 +409,39 @@ export async function getSubmissionById(submissionId: string): Promise<TestSubmi
 
   if (error) {
     console.error(`Supabase error fetching submission ${submissionId}:`, error);
-    throw new Error(error.message || `Failed to fetch submission ${submissionId}. Check RLS policies.`);
+    throw new Error(error.message || `Failed to fetch submission ${submissionId}. Check RLS.`);
   }
   return data as TestSubmission | undefined;
 }
 
-export async function getAllSubmissions(): Promise<TestSubmission[]> {
-  const { data, error } = await supabase
+// Admin function to update submission, e.g., with manual analysis or overriding AI
+export async function updateSubmissionAdmin(submissionId: string, submissionData: Partial<Omit<TestSubmission, 'id' | 'testId' | 'fullName'>>): Promise<TestSubmission | undefined> {
+    const supabaseAdmin = createSupabaseServiceRoleClient();
+    const { data, error } = await supabaseAdmin
+        .from('submissions')
+        .update(submissionData)
+        .eq('id', submissionId)
+        .select()
+        .single();
+
+    if (error) {
+        console.error(`Supabase admin error updating submission ${submissionId}:`, error);
+        throw new Error(error.message || `Failed to update submission ${submissionId} (admin).`);
+    }
+    return data as TestSubmission | undefined;
+}
+
+
+export async function getAllSubmissionsAdmin(): Promise<TestSubmission[]> {
+  const supabaseAdmin = createSupabaseServiceRoleClient();
+  const { data, error } = await supabaseAdmin
     .from('submissions')
     .select('*')
     .order('submitted_at', { ascending: false });
 
   if (error) {
-    console.error('Supabase error fetching all submissions:', error);
-    throw new Error(error.message || 'Failed to fetch all submissions. Check RLS policies.');
+    console.error('Supabase admin error fetching all submissions:', error);
+    throw new Error(error.message || 'Failed to fetch all submissions (admin).');
   }
   return (data || []) as TestSubmission[];
 }
-    

@@ -1,7 +1,5 @@
 
-import { getTestById } from '@/lib/dataService';
-import { TestForm } from '@/components/admin/TestForm';
-import { QuestionList } from '@/components/admin/QuestionList';
+import { getTestByIdAdmin } from '@/lib/dataService'; // Use admin version to fetch test details
 import { updateTestAction, addQuestionAction, updateQuestionAction, deleteQuestionAction } from '../../actions';
 import { notFound } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -14,7 +12,7 @@ import ManageQuestionsClient from './ManageQuestionsClient';
 export const dynamic = 'force-dynamic'; // Ensure dynamic rendering
 
 export default async function EditTestPage({ params }: { params: { testId: string } }) {
-  const test = await getTestById(params.testId);
+  const test = await getTestByIdAdmin(params.testId); // Use admin data fetching
 
   if (!test) {
     notFound();

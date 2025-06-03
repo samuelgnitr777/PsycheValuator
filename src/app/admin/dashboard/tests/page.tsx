@@ -1,7 +1,6 @@
 
-
 import Link from 'next/link';
-import { getTests } from '@/lib/dataService';
+import { getAllTestsAdmin } from '@/lib/dataService'; // Use admin version to fetch all tests
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { PlusCircle, ListChecks } from 'lucide-react';
@@ -12,7 +11,7 @@ import Image from 'next/image';
 export const dynamic = 'force-dynamic'; // Ensure fresh data on each load
 
 export default async function ManageTestsPage() {
-  const tests = await getTests();
+  const tests = await getAllTestsAdmin(); // Use admin data fetching
 
   return (
     <div className="space-y-6">
@@ -64,5 +63,3 @@ export default async function ManageTestsPage() {
     </div>
   );
 }
-
-
