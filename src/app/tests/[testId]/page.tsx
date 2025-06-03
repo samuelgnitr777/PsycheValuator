@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { AlertTriangle } from 'lucide-react';
 
+export const dynamic = 'force-dynamic'; // Ensure dynamic rendering
 
 export default async function TestPage({ params }: { params: { testId: string } }) {
   const test = await getTestById(params.testId);

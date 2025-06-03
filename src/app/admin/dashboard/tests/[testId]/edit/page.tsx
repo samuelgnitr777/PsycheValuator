@@ -11,6 +11,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import EditTestFormClient from './EditTestFormClient'; 
 import ManageQuestionsClient from './ManageQuestionsClient'; 
 
+export const dynamic = 'force-dynamic'; // Ensure dynamic rendering
+
 export default async function EditTestPage({ params }: { params: { testId: string } }) {
   const test = await getTestById(params.testId);
 
@@ -55,4 +57,3 @@ export default async function EditTestPage({ params }: { params: { testId: strin
     </div>
   );
 }
-
