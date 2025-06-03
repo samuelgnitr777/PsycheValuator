@@ -404,6 +404,13 @@ export async function createInitialSubmission(testId: string, fullName: string, 
 export async function updateSubmission(submissionId: string, submissionData: TestSubmissionUpdatePayload): Promise<TestSubmission | undefined> {
   const supabaseService = createSupabaseServiceRoleClient();
 
+  // First, check if the submission exists
+  const existingSubmission = await getSubmissionById(submissionId); // Use anon client to check existence (RLS might apply)
+  if (!existingSubmission) {
+    const errorMessage = `Submission with ID ${submissionId} not found. Failed to update.`;
+    throw new Error(errorMessage);
+  }
+
   const updatePayload: TestSubmissionUpdatePayload = {};
   // Only include fields in the payload if they are explicitly provided in submissionData
   if (submissionData.answers !== undefined) updatePayload.answers = submissionData.answers;
@@ -477,6 +484,13 @@ export async function getSubmissionById(submissionId: string): Promise<TestSubmi
 // --- Admin-specific submission functions (using service_role) ---
 export async function updateSubmissionAdmin(submissionId: string, submissionData: TestSubmissionUpdatePayload): Promise<TestSubmission | undefined> {
     const supabaseAdmin = createSupabaseServiceRoleClient();
+
+    // First, check if the submission exists using the admin client
+    const { data: existingSubmission, error: checkError } = await supabaseAdmin.from('submissions').select('id').eq('id', submissionId).maybeSingle();
+    if (checkError) throw handleAdminSupabaseError(checkError, `checking existence of submission ${submissionId} for admin update`);
+    if (!existingSubmission) {
+        throw new Error(`Submission with ID ${submissionId} not found. Failed to update (admin).`);
+    }
 
     const updatePayload: TestSubmissionUpdatePayload = {};
     if (submissionData.answers !== undefined) updatePayload.answers = submissionData.answers;
