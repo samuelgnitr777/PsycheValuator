@@ -12,7 +12,9 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowLeft, ArrowRight, CheckCircle, AlertTriangle, User, PlayCircle, Mail } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { createInitialSubmission, updateSubmission } from '@/lib/dataService'; // Import submission functions
+import { createInitialSubmission, updateSubmission } from '@/lib/dataService'; 
+import { useToast } from '@/hooks/use-toast';
+
 
 interface TestPlayerProps {
   test: Test;
@@ -30,9 +32,10 @@ export function TestPlayer({ test }: TestPlayerProps) {
 
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<UserAnswer[]>([]);
-  const [testStartTime, setTestStartTime] = useState<number>(0); // For calculating total timeTaken for test
+  const [testStartTime, setTestStartTime] = useState<number>(0); 
   const router = useRouter();
   const [timeLeft, setTimeLeft] = useState(DEFAULT_TIMER_SECONDS);
+  const { toast } = useToast();
 
   const currentQuestion = test.questions[currentQuestionIndex];
 
@@ -60,16 +63,16 @@ export function TestPlayer({ test }: TestPlayerProps) {
       return;
     }
     setFormError('');
-    setCurrentScreen('submitting'); // Show loading while creating submission
+    setCurrentScreen('submitting'); 
     try {
       const initialSubmission = await createInitialSubmission(test.id, fullName, email);
       setSubmissionId(initialSubmission.id);
       setTestStartTime(Date.now());
       setCurrentScreen('playing');
-      resetTimer(); // Reset timer for the first question
+      resetTimer(); 
     } catch (error) {
       console.error("Gagal memulai tes:", error);
-      setFormError("Gagal memulai tes. Silakan coba lagi."); // Show generic error
+      setFormError((error as Error).message || "Gagal memulai tes. Silakan coba lagi."); 
       setCurrentScreen('nameInput');
     }
   };
@@ -83,26 +86,35 @@ export function TestPlayer({ test }: TestPlayerProps) {
   const handleSubmitTestLogic = async () => {
     if (!submissionId) {
       console.error("Submission ID tidak ada saat mengirim tes.");
+      toast({ title: 'Error', description: 'ID Submission tidak ditemukan. Tidak dapat mengirim tes.', variant: 'destructive' });
+      setCurrentScreen('playing'); 
       return;
     }
     setCurrentScreen('submitting');
     const endTime = Date.now();
     const timeTaken = Math.round((endTime - testStartTime) / 1000);
 
-    const submissionUpdateData: Partial<Omit<TestSubmission, 'id' | 'testId' | 'fullName' | 'email'>> = {
-      answers: answers,
+    // Log answers before sending
+    console.log('Answers being submitted:', JSON.stringify(answers, null, 2));
+
+    const submissionUpdateData = {
+      answers: answers, 
       timeTaken: timeTaken,
       submittedAt: new Date().toISOString(),
-      analysisStatus: 'pending_ai',
+      analysisStatus: 'pending_ai' as const,
     };
     
     try {
-      await updateSubmission(submissionId, submissionUpdateData);
+      const updatedSubmission = await updateSubmission(submissionId, submissionUpdateData);
+      if (!updatedSubmission) {
+        // This case implies update failed to return data, error is thrown from updateSubmission
+        // No need for specific handling here as updateSubmission itself throws.
+      }
       router.push(`/tests/${test.id}/results/${submissionId}`);
     } catch (error) {
       console.error("Gagal mengirim tes:", error);
+      toast({ title: 'Error Mengirim Tes', description: (error as Error).message || 'Terjadi kesalahan. Silakan coba lagi.', variant: 'destructive' });
       setCurrentScreen('playing'); 
-      // Ideally show a toast message here
     }
   };
 
@@ -112,7 +124,7 @@ export function TestPlayer({ test }: TestPlayerProps) {
     } else {
       handleSubmitTestLogic();
     }
-  }, [currentQuestionIndex, test.questions.length, submissionId, fullName, email, answers, testStartTime, test.id, handleSubmitTestLogic]);
+  }, [currentQuestionIndex, test.questions.length, handleSubmitTestLogic]);
 
 
   useEffect(() => {
@@ -165,7 +177,7 @@ export function TestPlayer({ test }: TestPlayerProps) {
   };
     
   const getUnansweredCount = () => {
-    if (!currentQuestion) return test.questions.length; // If no questions loaded yet
+    if (!currentQuestion) return test.questions.length; 
     const answeredQuestionIds = new Set(answers.map(a => a.questionId));
     return test.questions.filter(q => !answeredQuestionIds.has(q.id) || answers.find(a=>a.questionId === q.id)?.value === '').length;
   }
