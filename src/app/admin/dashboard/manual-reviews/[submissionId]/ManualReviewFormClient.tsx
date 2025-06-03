@@ -66,6 +66,8 @@ export default function ManualReviewFormClient({
   });
   
   useEffect(() => {
+    // This effect ensures the form resets if the initial props change,
+    // e.g., due to navigation or initial load.
     form.reset({
         manualAnalysisNotes: initialNotes,
         analysisStatus: initialStatus,
@@ -88,7 +90,13 @@ export default function ManualReviewFormClient({
         title: 'Tinjauan Disimpan',
         description: `Catatan dan status untuk pengiriman telah diperbarui.`,
       });
-      router.refresh(); 
+      // Reset the form with the successful data from the server action
+      // This ensures the UI reflects the saved state immediately.
+      form.reset({
+        manualAnalysisNotes: result.submission.manualAnalysisNotes || '',
+        analysisStatus: result.submission.analysisStatus,
+      });
+      router.refresh(); // Still refresh to ensure the whole page context is up-to-date
     } else {
       toast({
         title: 'Error Menyimpan Tinjauan',
@@ -100,6 +108,26 @@ export default function ManualReviewFormClient({
 
   const handleSendEmail = async () => {
     setIsSendingEmail(true);
+    // Use form.getValues() to ensure we're checking the *current* displayed status
+    // in case the user changed it and hasn't saved yet, though the button logic should prevent this.
+    // More robustly, canSendEmail logic could also use form.watch().
+    // For now, we assume the `canSendEmail` prop derived from `initialStatus` (after successful save and reset) is sufficient.
+    const currentFormValues = form.getValues();
+    const notesForEmail = currentFormValues.manualAnalysisNotes; // These are the notes currently in the form
+    const statusForEmail = currentFormValues.analysisStatus;
+
+    // Double check conditions before sending, using current form values
+    if (!notesForEmail || notesForEmail.trim() === '' || statusForEmail !== 'manual_review_completed') {
+        toast({
+            title: 'Tidak Dapat Mengirim Email',
+            description: 'Pastikan ada catatan manual yang terisi dan status adalah "Manual Selesai" pada form sebelum mengirim.',
+            variant: 'destructive',
+        });
+        setIsSendingEmail(false);
+        return;
+    }
+
+
     const result = await sendEmailAction(submissionId);
     setIsSendingEmail(false);
 
@@ -108,7 +136,7 @@ export default function ManualReviewFormClient({
         title: 'Email "Dikirim"',
         description: result.message || `Email notifikasi hasil tinjauan manual untuk ${submissionFullName} telah dicatat untuk dikirim (simulasi).`,
       });
-      router.refresh(); // Refresh to potentially reflect any status changes if action modifies submission
+      router.refresh();
     } else {
       toast({
         title: 'Error Mengirim Email',
@@ -118,7 +146,15 @@ export default function ManualReviewFormClient({
     }
   };
 
-  const canSendEmail = initialNotes && initialNotes.trim() !== '' && initialStatus === 'manual_review_completed';
+  // This `canSendEmail` depends on the props (initialNotes, initialStatus),
+  // which are updated after router.refresh() and the useEffect runs.
+  // After a successful save of status to "manual_review_completed",
+  // and the form.reset in onFormSubmit, and subsequent router.refresh + useEffect,
+  // these props should reflect the new state, enabling the button.
+  const isManualReviewCompleted = form.watch('analysisStatus') === 'manual_review_completed';
+  const hasManualNotes = !!form.watch('manualAnalysisNotes')?.trim();
+  const canSendEmail = hasManualNotes && isManualReviewCompleted;
+
 
   return (
     <Card className="sticky top-24">
@@ -200,7 +236,7 @@ export default function ManualReviewFormClient({
                 <AlertDialogDescription>
                   Anda akan mengirimkan hasil tinjauan manual untuk tes <span className="font-semibold">{testTitle}</span> kepada <span className="font-semibold">{submissionFullName}</span> (<span className="font-semibold">{submissionEmail}</span>).
                   <br />
-                  Catatan yang akan dikirim adalah catatan yang sudah <span className='font-semibold'>tersimpan</span>. Pastikan catatan terbaru sudah disimpan.
+                  Catatan yang akan dikirim adalah catatan yang saat ini <span className='font-semibold'>terisi di form</span>. Pastikan catatan sudah sesuai dengan yang ingin dikirim. Jika ada perubahan yang belum disimpan, simpan dahulu.
                   <br /><br />
                   Apakah Anda yakin ingin melanjutkan? (Ini adalah simulasi pengiriman)
                 </AlertDialogDescription>
@@ -215,10 +251,11 @@ export default function ManualReviewFormClient({
           </AlertDialog>
           {!canSendEmail && (
              <p className="text-xs text-muted-foreground text-center">
-                Untuk mengirim email, pastikan ada catatan manual yang <span className="font-semibold">tersimpan</span> dan status analisis adalah <span className="font-semibold">"Manual Selesai"</span>.
+                Untuk mengirim email, pastikan ada catatan manual yang terisi di form dan status analisis adalah <span className="font-semibold">"Manual Selesai"</span>. Simpan perubahan jika ada.
             </p>
           )}
       </CardFooter>
     </Card>
   );
 }
+
