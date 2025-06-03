@@ -41,29 +41,29 @@ function mapTestToCamelCase(dbTest: any): Test {
     id: dbTest.id,
     title: dbTest.title,
     description: dbTest.description,
-    isPublished: dbTest.isPublished || dbTest.is_published, // Handles if DB field is "isPublished" or "is_published"
+    isPublished: dbTest["isPublished"] || dbTest.is_published,
     questions: (dbTest.questions || []).map(mapQuestionToCamelCase).sort((a: Question, b: Question) => (a.order || 0) - (b.order || 0)),
   };
-  console.log('[mapTestToCamelCase] Input dbTest:', dbTest, 'Output mappedTest:', mappedTest);
+  console.log('[mapTestToCamelCase] Input dbTest:', /*JSON.stringify(dbTest, null, 2),*/ 'Output mappedTest:', /*JSON.stringify(mappedTest, null, 2)*/);
   return mappedTest;
 }
 
 function mapSubmissionToCamelCase(dbSubmission: any): TestSubmission {
   if (!dbSubmission) return dbSubmission;
-  const mappedSubmission = {
+  const mappedSubmission: TestSubmission = {
     id: dbSubmission.id,
     testId: dbSubmission.test_id || dbSubmission.testId,
     fullName: dbSubmission.full_name || dbSubmission.fullName,
     email: dbSubmission.email,
     answers: (dbSubmission.answers || []).map(mapUserAnswerToCamelCase),
-    timeTaken: dbSubmission.time_taken || dbSubmission.timeTaken,
+    timeTaken: dbSubmission.time_taken === undefined ? 0 : Number(dbSubmission.time_taken), // Ensure number
     submittedAt: dbSubmission.submitted_at || dbSubmission.submittedAt,
     analysisStatus: dbSubmission.analysis_status || dbSubmission.analysisStatus,
     psychologicalTraits: dbSubmission.psychological_traits || dbSubmission.psychologicalTraits,
     aiError: dbSubmission.ai_error || dbSubmission.aiError,
     manualAnalysisNotes: dbSubmission.manual_analysis_notes || dbSubmission.manualAnalysisNotes,
   };
-  console.log('[mapSubmissionToCamelCase] Input dbSubmission:', dbSubmission, 'Output mappedSubmission:', mappedSubmission);
+  console.log('[mapSubmissionToCamelCase] Input dbSubmission:', /* JSON.stringify(dbSubmission, null, 2), */ 'Output mappedSubmission:', /* JSON.stringify(mappedSubmission, null, 2) */);
   return mappedSubmission;
 }
 
@@ -160,7 +160,7 @@ export async function getPublishedTestById(id: string): Promise<Test | undefined
   }
   if (!data) return undefined;
   const mappedData = mapTestToCamelCase(data);
-  console.log(`[dataService] getPublishedTestById - MAPPED data for ${id}:`, JSON.stringify(mappedData, null, 2));
+  // console.log(`[dataService] getPublishedTestById - MAPPED data for ${id}:`, JSON.stringify(mappedData, null, 2));
   return mappedData;
 }
 
@@ -227,7 +227,7 @@ export async function getTestByIdAdmin(id: string): Promise<Test | undefined> {
   }
   if (!data) return undefined;
   const mappedData = mapTestToCamelCase(data);
-  console.log(`[dataService] getTestByIdAdmin - MAPPED data for ${id}:`, JSON.stringify(mappedData, null, 2));
+  // console.log(`[dataService] getTestByIdAdmin - MAPPED data for ${id}:`, JSON.stringify(mappedData, null, 2));
   return mappedData;
 }
 
@@ -239,7 +239,7 @@ export async function createTestAdmin(testData: Omit<Test, 'id' | 'questions' | 
     .insert({
       title: testData.title,
       description: testData.description,
-      "isPublished": false, // Use quoted camelCase for DB
+      "isPublished": false, 
     })
     .select()
     .single();
@@ -260,7 +260,6 @@ export async function updateTestAdmin(id: string, testData: Partial<Omit<Test, '
     .update({
       title: testData.title,
       description: testData.description,
-      // "isPublished" is handled by toggleTestPublicationAction
     })
     .eq('id', id)
     .select(`id, title, description, "isPublished", questions (id, test_id, text, type, options, scale_min, scale_max, min_label, max_label, order)`) 
@@ -278,7 +277,7 @@ export async function updateTestPublicationStatusAdmin(testId: string, isPublish
   const supabaseAdmin = createSupabaseServiceRoleClient();
   const { data, error } = await supabaseAdmin
     .from('tests')
-    .update({ "isPublished": isPublished }) // Use quoted camelCase for DB
+    .update({ "isPublished": isPublished }) 
     .eq('id', testId)
     .select() 
     .single();
@@ -438,18 +437,32 @@ export async function createInitialSubmission(testId: string, fullName: string, 
   if (error) {
     const context = 'creating initial submission';
     const baseMessage = `Supabase error ${context}:`;
-    console.error(baseMessage, JSON.stringify(error, null, 2));
+    console.error(baseMessage, JSON.stringify(error, null, 2)); // This logs the RLS error
+
     let detailedMessage = `Failed ${context}.`;
-    if (typeof error === 'object' && error !== null) {
-      detailedMessage = (error as any).message || JSON.stringify(error);
+    const supabaseError = error as any; // Type assertion for easier access
+
+    if (supabaseError.message && supabaseError.message.toLowerCase().includes('violates row-level security policy')) {
+      detailedMessage = "RLS VIOLATION: Insert failed for 'submissions' table.\n" +
+                        "This means the public user (anon role) doesn't have permission.\n" +
+                        "Please CHECK THE FOLLOWING in your Supabase Dashboard (SQL Editor or Policies UI for 'submissions' table):\n" +
+                        "1. Is RLS ENABLED on the 'submissions' table?\n" +
+                        "2. Is there an INSERT policy specifically for the 'submissions' table?\n" +
+                        "3. Does this INSERT policy target (grant permission TO) the 'anon' role?\n" +
+                        "4. Is the 'WITH CHECK' expression for this 'anon' INSERT policy simply 'true'? (This allows all inserts by anon. If it's a more complex condition, ensure your current data meets that condition.)\n" +
+                        `Original Supabase error: ${supabaseError.message}`;
+    } else if (supabaseError.code === '23502') { // NOT NULL violation
+        detailedMessage = `DATABASE ERROR (NOT NULL constraint): A required field is missing or null in the data being saved. Please check your 'submissions' table schema for columns that cannot be null. Original error: ${supabaseError.message}. Columns in payload being inserted: ${Object.keys(submissionPayload).join(', ')}`;
+    } else if (supabaseError.message) {
+      detailedMessage = supabaseError.message;
     } else {
-      detailedMessage = String(error);
+      detailedMessage = JSON.stringify(supabaseError);
     }
-    if (!detailedMessage.toLowerCase().includes('rls') && !detailedMessage.toLowerCase().includes('policy')) {
-        detailedMessage += ' Double check RLS policies for the "anon" role on the "submissions" table for INSERT. Also, ensure all NOT NULL columns in your "submissions" table schema are being provided with values in the insert statement and match their data types.';
-    }
+    
+    console.error("Throwing error from createInitialSubmission:", detailedMessage);
     throw new Error(detailedMessage);
   }
+
   if (!data) {
     throw new Error('Failed to create initial submission: No data returned from Supabase. This can happen if RLS prevents returning the inserted row, or due to a network issue.');
   }
@@ -516,14 +529,14 @@ export async function updateSubmission(submissionId: string, submissionData: Tes
     console.error(errorMessage);
     throw new Error(errorMessage);
   }
-  console.log(`[dataService] updateSubmission (${submissionId}) - Raw data from DB after update:`, JSON.stringify(data));
+  // console.log(`[dataService] updateSubmission (${submissionId}) - Raw data from DB after update:`, JSON.stringify(data));
   const mappedData = data ? mapSubmissionToCamelCase(data) : undefined;
-  console.log(`[dataService] updateSubmission (${submissionId}) - MAPPED data returned:`, JSON.stringify(mappedData));
+  // console.log(`[dataService] updateSubmission (${submissionId}) - MAPPED data returned:`, JSON.stringify(mappedData));
   return mappedData;
 }
 
 export async function getSubmissionById(submissionId: string): Promise<TestSubmission | undefined> {
-  console.log(`[dataService] getSubmissionById - Fetching submission: ${submissionId}`);
+  // console.log(`[dataService] getSubmissionById - Fetching submission: ${submissionId}`);
   const { data, error } = await anonSupabaseClient
     .from('submissions')
     .select('*') 
@@ -542,20 +555,20 @@ export async function getSubmissionById(submissionId: string): Promise<TestSubmi
     }
     throw new Error(detailedMessage);
   }
-  console.log(`[dataService] getSubmissionById - Raw data from DB for ${submissionId}:`, JSON.stringify(data));
+  // console.log(`[dataService] getSubmissionById - Raw data from DB for ${submissionId}:`, JSON.stringify(data));
   if (!data) {
-    console.log(`[dataService] getSubmissionById - No data found for ${submissionId}.`);
+    // console.log(`[dataService] getSubmissionById - No data found for ${submissionId}.`);
     return undefined;
   }
   const mappedData = mapSubmissionToCamelCase(data);
-  console.log(`[dataService] getSubmissionById - MAPPED data being returned for ${submissionId}:`, JSON.stringify(mappedData, null, 2));
+  // console.log(`[dataService] getSubmissionById - MAPPED data being returned for ${submissionId}:`, JSON.stringify(mappedData, null, 2));
   return mappedData;
 }
 
 // --- Admin-specific submission functions (using service_role) ---
 export async function updateSubmissionAdmin(submissionId: string, submissionData: TestSubmissionUpdatePayload): Promise<TestSubmission | undefined> {
     const supabaseAdmin = createSupabaseServiceRoleClient();
-    console.log(`[dataService] updateSubmissionAdmin (${submissionId}) - Input submissionData (camelCase):`, JSON.stringify(submissionData));
+    // console.log(`[dataService] updateSubmissionAdmin (${submissionId}) - Input submissionData (camelCase):`, JSON.stringify(submissionData));
 
 
     const { data: existingSubmission, error: checkError } = await supabaseAdmin
@@ -582,7 +595,7 @@ export async function updateSubmissionAdmin(submissionId: string, submissionData
     if (submissionData.hasOwnProperty('ai_error')) dbUpdatePayload.ai_error = submissionData.ai_error;
     if (submissionData.hasOwnProperty('manual_analysis_notes')) dbUpdatePayload.manual_analysis_notes = submissionData.manual_analysis_notes;
     
-    console.log(`[dataService] updateSubmissionAdmin (${submissionId}) - Payload to DB (snake_case for internal, original for JSON):`, JSON.stringify(dbUpdatePayload));
+    // console.log(`[dataService] updateSubmissionAdmin (${submissionId}) - Payload to DB (snake_case for internal, original for JSON):`, JSON.stringify(dbUpdatePayload));
 
     if (Object.keys(dbUpdatePayload).length === 0) {
       console.warn(`updateSubmissionAdmin called for ${submissionId} with no updatable fields. Fetching current state.`);
@@ -609,9 +622,9 @@ export async function updateSubmissionAdmin(submissionId: string, submissionData
         console.error(errorMessage);
         throw new Error(errorMessage);
     }
-    console.log(`[dataService] updateSubmissionAdmin (${submissionId}) - Raw data from DB after update:`, JSON.stringify(data));
+    // console.log(`[dataService] updateSubmissionAdmin (${submissionId}) - Raw data from DB after update:`, JSON.stringify(data));
     const mappedData = mapSubmissionToCamelCase(data);
-    console.log(`[dataService] updateSubmissionAdmin (${submissionId}) - MAPPED data returned:`, JSON.stringify(mappedData));
+    // console.log(`[dataService] updateSubmissionAdmin (${submissionId}) - MAPPED data returned:`, JSON.stringify(mappedData));
     return mappedData;
 }
 
@@ -630,7 +643,7 @@ export async function getAllSubmissionsAdmin(): Promise<TestSubmission[]> {
 }
 
 export async function getTestById(id: string): Promise<Test | undefined> {
-  console.log(`[dataService] getTestById - Fetching test: ${id}`);
+  // console.log(`[dataService] getTestById - Fetching test: ${id}`);
   const { data, error } = await anonSupabaseClient
     .from('tests')
     .select(`
@@ -659,13 +672,13 @@ export async function getTestById(id: string): Promise<Test | undefined> {
     console.error(`Supabase error fetching test by id (public) ${id}:`, JSON.stringify(error, null, 2));
     throw new Error((error as any).message || `Failed to fetch test ${id}.`);
   }
-  console.log(`[dataService] getTestById - Raw data from DB for ${id}:`, JSON.stringify(data));
+  // console.log(`[dataService] getTestById - Raw data from DB for ${id}:`, JSON.stringify(data));
   if (!data) {
-    console.log(`[dataService] getTestById - No data found for ${id}.`);
+    // console.log(`[dataService] getTestById - No data found for ${id}.`);
     return undefined;
   }
   const mappedData = mapTestToCamelCase(data);
-  console.log(`[dataService] getTestById - MAPPED data being returned for ${id}:`, JSON.stringify(mappedData, null, 2));
+  // console.log(`[dataService] getTestById - MAPPED data being returned for ${id}:`, JSON.stringify(mappedData, null, 2));
   return mappedData;
 }
     

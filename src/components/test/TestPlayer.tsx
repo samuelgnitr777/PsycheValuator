@@ -65,14 +65,24 @@ export function TestPlayer({ test }: TestPlayerProps) {
     setFormError('');
     setCurrentScreen('submitting'); 
     try {
+      console.log(`[TestPlayer] Attempting to create initial submission for: ${fullName}, ${email}`);
       const initialSubmission = await createInitialSubmission(test.id, fullName, email);
+      console.log(`[TestPlayer] Initial submission created with ID: ${initialSubmission.id}`);
       setSubmissionId(initialSubmission.id);
       setTestStartTime(Date.now());
       setCurrentScreen('playing');
       resetTimer(); 
     } catch (error) {
-      console.error("Gagal memulai tes:", error);
-      setFormError((error as Error).message || "Gagal memulai tes. Silakan coba lagi."); 
+      const err = error as Error;
+      console.error("[TestPlayer] Gagal memulai tes:", err.message, err.stack);
+      const displayMessage = err.message || "Gagal memulai tes. Silakan coba lagi.";
+      setFormError(displayMessage); 
+      toast({ 
+        title: 'Gagal Memulai Tes',
+        description: displayMessage.split('\n').map((line, i) => <p key={i} className={i === 0 ? 'font-semibold' : ''}>{line}</p>), // Format for readability
+        variant: 'destructive',
+        duration: 20000 // Longer duration for complex error messages
+      });
       setCurrentScreen('nameInput');
     }
   };
@@ -94,8 +104,8 @@ export function TestPlayer({ test }: TestPlayerProps) {
     const endTime = Date.now();
     const timeTaken = Math.round((endTime - testStartTime) / 1000);
 
-    // Log answers before sending
-    console.log('Answers being submitted:', JSON.stringify(answers, null, 2));
+    console.log('[TestPlayer] Answers being submitted:', JSON.stringify(answers, null, 2));
+    console.log(`[TestPlayer] Time taken: ${timeTaken}`);
 
     const submissionUpdateData = {
       answers: answers, 
@@ -108,11 +118,10 @@ export function TestPlayer({ test }: TestPlayerProps) {
       const updatedSubmission = await updateSubmission(submissionId, submissionUpdateData);
       if (!updatedSubmission) {
         // This case implies update failed to return data, error is thrown from updateSubmission
-        // No need for specific handling here as updateSubmission itself throws.
       }
       router.push(`/tests/${test.id}/results/${submissionId}`);
     } catch (error) {
-      console.error("Gagal mengirim tes:", error);
+      console.error("[TestPlayer] Gagal mengirim tes:", error);
       toast({ title: 'Error Mengirim Tes', description: (error as Error).message || 'Terjadi kesalahan. Silakan coba lagi.', variant: 'destructive' });
       setCurrentScreen('playing'); 
     }
@@ -221,7 +230,7 @@ export function TestPlayer({ test }: TestPlayerProps) {
                 />
               </div>
           </div>
-          {formError && <p className="text-sm text-destructive mt-1">{formError}</p>}
+          {formError && <p className="text-sm text-destructive mt-1 whitespace-pre-wrap">{formError}</p>}
           <Button onClick={handleStartTest} className="w-full">
             <PlayCircle className="mr-2 h-5 w-5" /> Mulai Tes
           </Button>
