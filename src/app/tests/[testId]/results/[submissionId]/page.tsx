@@ -4,7 +4,7 @@ import { getTestById, getSubmissionById, updateSubmission } from '@/lib/dataServ
 import { analyzeTestResponses, AnalyzeTestResponsesOutput } from '@/ai/flows/analyze-test-responses';
 import { ResultsDisplay } from '@/components/test/ResultsDisplay';
 import { notFound } from 'next/navigation';
-import type { Test, TestSubmission, TestSubmissionUpdatePayload } from '@/types';
+import type { Test, TestSubmission, TestSubmissionUpdatePayload, Question, QuestionOption } from '@/types';
 import Header from '@/components/layout/Header';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
@@ -24,7 +24,7 @@ function mapUserAnswerToCamelCase(dbAnswer: any): UserAnswer {
 
 function mapLocalSubmissionToCamelCase(dbSubmission: any): TestSubmission {
   if (!dbSubmission) return dbSubmission;
-  return {
+  const mappedSubmission = {
     id: dbSubmission.id,
     testId: dbSubmission.test_id || dbSubmission.testId,
     fullName: dbSubmission.full_name || dbSubmission.fullName,
@@ -37,6 +37,8 @@ function mapLocalSubmissionToCamelCase(dbSubmission: any): TestSubmission {
     aiError: dbSubmission.ai_error || dbSubmission.aiError,
     manualAnalysisNotes: dbSubmission.manual_analysis_notes || dbSubmission.manualAnalysisNotes,
   };
+  console.log('[ResultsContent] LOCAL MAPPING (submission) - Input:', JSON.stringify(dbSubmission, null, 2), 'Output:', JSON.stringify(mappedSubmission, null, 2));
+  return mappedSubmission;
 }
 
 function mapLocalQuestionOptionToCamelCase(dbOption: any): QuestionOption {
@@ -60,13 +62,15 @@ function mapLocalQuestionToCamelCase(dbQuestion: any): Question {
 
 function mapLocalTestToCamelCase(dbTest: any): Test {
  if (!dbTest) return dbTest;
- return {
+ const mappedTest = {
     id: dbTest.id,
     title: dbTest.title,
     description: dbTest.description,
     isPublished: dbTest.isPublished || dbTest.is_published,
     questions: (dbTest.questions || []).map(mapLocalQuestionToCamelCase).sort((a: Question, b: Question) => (a.order || 0) - (b.order || 0)),
  };
+ console.log('[ResultsContent] LOCAL MAPPING (test) - Input:', JSON.stringify(dbTest, null, 2), 'Output:', JSON.stringify(mappedTest, null, 2));
+ return mappedTest;
 }
 
 
@@ -75,8 +79,8 @@ interface TestResultsPageProps {
 }
 
 async function ResultsContent({ testId, submissionId }: { testId: string, submissionId: string }) {
-  let rawSubmission = await getSubmissionById(submissionId); // Expects mapped from dataService
-  let rawTest = await getTestById(testId); // Expects mapped from dataService
+  let rawSubmission = await getSubmissionById(submissionId); 
+  let rawTest = await getTestById(testId); 
 
   console.log('[ResultsContent] Data received from getSubmissionById (SHOULD BE CAMELCASE):', JSON.stringify(rawSubmission, null, 2));
   console.log('[ResultsContent] Data received from getTestById (SHOULD BE CAMELCASE):', JSON.stringify(rawTest, null, 2));
@@ -150,15 +154,32 @@ async function ResultsContent({ testId, submissionId }: { testId: string, submis
         submission.aiError = currentAiError; // Update local submission state
       }
     } catch (aiServiceError) { 
-      console.error(`Error during AI service call (analyzeTestResponses) for submission ${submissionId}:`, aiServiceError);
-      currentAiError = "Gagal menghubungi layanan analisis AI.";
+      console.error(
+        `Error during AI service call (analyzeTestResponses) for submission ${submissionId}. Error details:`,
+        typeof aiServiceError === 'object' && aiServiceError !== null ? JSON.stringify(aiServiceError, null, 2) : aiServiceError
+      );
+      if (aiServiceError instanceof Error && aiServiceError.stack) {
+         console.error("Stack trace:", aiServiceError.stack);
+      }
+
+      currentAiError = "Gagal menghubungi layanan analisis AI."; // Default
       if (aiServiceError instanceof Error) {
-        if (aiServiceError.message.includes("503") || aiServiceError.message.toLowerCase().includes("model is overloaded") || aiServiceError.message.toLowerCase().includes("overloaded")) {
+        const msg = aiServiceError.message.toLowerCase();
+        if (msg.includes("503") || msg.includes("model is overloaded") || msg.includes("overloaded")) {
           currentAiError = "Layanan analisis AI sedang kelebihan beban. Hasil Anda akan ditinjau secara manual.";
-        } else if (aiServiceError.message.toLowerCase().includes("deadline exceeded")) {
+        } else if (msg.includes("deadline exceeded")) {
           currentAiError = "Waktu tunggu untuk layanan analisis AI habis. Hasil Anda akan ditinjau secara manual.";
         } else {
-          currentAiError = `Layanan AI Error: ${(aiServiceError as Error).message}. Hasil akan ditinjau manual.`;
+          currentAiError = `Layanan AI Error: ${aiServiceError.message}. Hasil akan ditinjau manual.`;
+        }
+      } else if (typeof aiServiceError === 'string' && aiServiceError.trim() !== '') {
+        currentAiError = `Layanan AI mengembalikan pesan: ${aiServiceError}. Hasil akan ditinjau manual.`;
+      } else if (typeof aiServiceError === 'object' && aiServiceError !== null) {
+        const objMsg = (aiServiceError as any).message || (aiServiceError as any).error || (aiServiceError as any).details;
+        if (objMsg && typeof objMsg === 'string') {
+            currentAiError = `Kesalahan layanan AI: ${objMsg}. Hasil akan ditinjau manual.`;
+        } else {
+             currentAiError = "Terjadi kesalahan tidak terduga dengan layanan AI. Hasil akan ditinjau secara manual.";
         }
       }
       
@@ -186,15 +207,14 @@ async function ResultsContent({ testId, submissionId }: { testId: string, submis
   
   return (
     <ResultsDisplay 
-      test={test} // test is now mapped locally
-      submission={submission} // submission is now mapped locally
+      test={test} 
+      submission={submission} 
     />
   );
 }
 
 
 export default async function TestResultsPage({ params }: TestResultsPageProps) {
-  // params are already resolved correctly in async components by Next.js
   return (
     <div className="flex flex-col min-h-screen">
       <Header />
