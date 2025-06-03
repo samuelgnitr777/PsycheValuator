@@ -4,35 +4,100 @@ import { getTestById, getSubmissionById, updateSubmission } from '@/lib/dataServ
 import { analyzeTestResponses, AnalyzeTestResponsesOutput } from '@/ai/flows/analyze-test-responses';
 import { ResultsDisplay } from '@/components/test/ResultsDisplay';
 import { notFound } from 'next/navigation';
-import type { TestSubmission, TestSubmissionUpdatePayload } from '@/types';
+import type { Test, TestSubmission, TestSubmissionUpdatePayload } from '@/types';
 import Header from '@/components/layout/Header';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { Home, RefreshCw, AlertTriangle, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
+// Helper functions for mapping (can be moved to a util file if used elsewhere)
+// These are simplified versions for direct use here if dataService mapping is still problematic.
+// Ideally, dataService provides consistently mapped data.
+
+function mapUserAnswerToCamelCase(dbAnswer: any): UserAnswer {
+  return {
+    questionId: dbAnswer.question_id || dbAnswer.questionId,
+    value: dbAnswer.value,
+  };
+}
+
+function mapLocalSubmissionToCamelCase(dbSubmission: any): TestSubmission {
+  if (!dbSubmission) return dbSubmission;
+  return {
+    id: dbSubmission.id,
+    testId: dbSubmission.test_id || dbSubmission.testId,
+    fullName: dbSubmission.full_name || dbSubmission.fullName,
+    email: dbSubmission.email,
+    answers: (dbSubmission.answers || []).map(mapUserAnswerToCamelCase),
+    timeTaken: dbSubmission.time_taken || dbSubmission.timeTaken,
+    submittedAt: dbSubmission.submitted_at || dbSubmission.submittedAt,
+    analysisStatus: dbSubmission.analysis_status || dbSubmission.analysisStatus,
+    psychologicalTraits: dbSubmission.psychological_traits || dbSubmission.psychologicalTraits,
+    aiError: dbSubmission.ai_error || dbSubmission.aiError,
+    manualAnalysisNotes: dbSubmission.manual_analysis_notes || dbSubmission.manualAnalysisNotes,
+  };
+}
+
+function mapLocalQuestionOptionToCamelCase(dbOption: any): QuestionOption {
+ return { id: dbOption.id, text: dbOption.text };
+}
+
+function mapLocalQuestionToCamelCase(dbQuestion: any): Question {
+ return {
+    id: dbQuestion.id,
+    testId: dbQuestion.test_id || dbQuestion.testId,
+    text: dbQuestion.text,
+    type: dbQuestion.type,
+    options: dbQuestion.options ? (dbQuestion.options as any[]).map(mapLocalQuestionOptionToCamelCase) : undefined,
+    scaleMin: dbQuestion.scale_min,
+    scaleMax: dbQuestion.scale_max,
+    minLabel: dbQuestion.min_label,
+    maxLabel: dbQuestion.max_label,
+    order: dbQuestion.order,
+ };
+}
+
+function mapLocalTestToCamelCase(dbTest: any): Test {
+ if (!dbTest) return dbTest;
+ return {
+    id: dbTest.id,
+    title: dbTest.title,
+    description: dbTest.description,
+    isPublished: dbTest.isPublished || dbTest.is_published,
+    questions: (dbTest.questions || []).map(mapLocalQuestionToCamelCase).sort((a: Question, b: Question) => (a.order || 0) - (b.order || 0)),
+ };
+}
+
+
 interface TestResultsPageProps {
   params: { testId: string; submissionId: string };
 }
 
 async function ResultsContent({ testId, submissionId }: { testId: string, submissionId: string }) {
-  let submission = await getSubmissionById(submissionId); // Initial fetch
-  const test = await getTestById(testId);
+  let rawSubmission = await getSubmissionById(submissionId); // Expects mapped from dataService
+  let rawTest = await getTestById(testId); // Expects mapped from dataService
 
-  if (!test || !submission) {
+  console.log('[ResultsContent] Data received from getSubmissionById (SHOULD BE CAMELCASE):', JSON.stringify(rawSubmission, null, 2));
+  console.log('[ResultsContent] Data received from getTestById (SHOULD BE CAMELCASE):', JSON.stringify(rawTest, null, 2));
+
+  if (!rawTest || !rawSubmission) {
     notFound();
   }
   
-  console.log('[ResultsContent] Initial submission data:', JSON.stringify(submission, null, 2));
+  // Defensive re-mapping in ResultsContent, just in case dataService didn't map
+  const test = mapLocalTestToCamelCase(rawTest); 
+  let submission = mapLocalSubmissionToCamelCase(rawSubmission);
+
+  console.log('[ResultsContent] Data after LOCAL MAPPING in ResultsContent (submission):', JSON.stringify(submission, null, 2));
+  console.log('[ResultsContent] Data after LOCAL MAPPING in ResultsContent (test):', JSON.stringify(test, null, 2));
 
 
-  // If AI analysis is pending, attempt it
   if (submission.analysisStatus === 'pending_ai') {
     let aiResult: AnalyzeTestResponsesOutput | null = null;
     let currentAiError: string | null = null; 
 
     try {
-      // Step 1: Call AI Analysis
       aiResult = await analyzeTestResponses({
         responses: submission.answers
           .map(ans => {
@@ -43,7 +108,6 @@ async function ResultsContent({ testId, submissionId }: { testId: string, submis
         timeTaken: submission.timeTaken,
       });
 
-      // Step 2: Determine payload based on AI result
       let updatePayload: TestSubmissionUpdatePayload = {};
       if (aiResult.error) {
         currentAiError = aiResult.error; 
@@ -64,20 +128,18 @@ async function ResultsContent({ testId, submissionId }: { testId: string, submis
         };
       }
 
-      // Step 3: Attempt to save the AI outcome to the database
       try {
         const updatedData = await updateSubmission(submissionId, updatePayload);
         if (updatedData) {
-          submission = updatedData; // Update local submission state with new data
+          submission = mapLocalSubmissionToCamelCase(updatedData); // Ensure updated data is also mapped
         } else {
           console.warn(`UpdateSubmission for ${submissionId} with AI results returned no data. Re-fetching to ensure consistency.`);
           const refreshedSubmission = await getSubmissionById(submissionId);
           if (refreshedSubmission) {
-            submission = refreshedSubmission;
+            submission = mapLocalSubmissionToCamelCase(refreshedSubmission);
           } else {
             console.error(`CRITICAL: Failed to re-fetch submission ${submissionId} after AI update attempt returned no data. Current submission state might be stale.`);
-            // Potentially set an error on the submission object to reflect this to the user if appropriate
-            submission.aiError = submission.aiError ? `${submission.aiError} Gagal menyinkronkan status terbaru.` : "Gagal menyinkronkan status terbaru setelah analisis.";
+            submission.aiError = (submission.aiError ? `${submission.aiError} ` : "") + "Gagal menyinkronkan status terbaru.";
           }
         }
       } catch (dbUpdateError) {
@@ -85,7 +147,7 @@ async function ResultsContent({ testId, submissionId }: { testId: string, submis
         currentAiError = `Gagal menyimpan hasil analisis ke database: ${(dbUpdateError as Error).message}.`;
         
         submission.analysisStatus = 'ai_failed_pending_manual';
-        submission.aiError = currentAiError;
+        submission.aiError = currentAiError; // Update local submission state
       }
     } catch (aiServiceError) { 
       console.error(`Error during AI service call (analyzeTestResponses) for submission ${submissionId}:`, aiServiceError);
@@ -100,7 +162,6 @@ async function ResultsContent({ testId, submissionId }: { testId: string, submis
         }
       }
       
-      // Attempt to save this AI service error state to the database, but update local state regardless
       try {
         const errorSavePayload: TestSubmissionUpdatePayload = {
           analysisStatus: 'ai_failed_pending_manual',
@@ -108,31 +169,32 @@ async function ResultsContent({ testId, submissionId }: { testId: string, submis
         };
         const updatedDataOnError = await updateSubmission(submissionId, errorSavePayload);
         if (updatedDataOnError) {
-          submission = updatedDataOnError;
+          submission = mapLocalSubmissionToCamelCase(updatedDataOnError);
         } else {
             console.warn(`UpdateSubmission for ${submissionId} with AI service error returned no data. Using locally updated error state.`);
-            submission.analysisStatus = 'ai_failed_pending_manual';
+            submission.analysisStatus = 'ai_failed_pending_manual'; // Update local state directly
             submission.aiError = currentAiError;
         }
       } catch (updateErrorOnAiServiceFail) {
          console.error(`Error saving AI service failure status to database for ${submissionId}:`, updateErrorOnAiServiceFail);
          submission.analysisStatus = 'ai_failed_pending_manual';
-         submission.aiError = `${currentAiError} Selain itu, gagal menyimpan status ini ke DB: ${(updateErrorOnAiServiceFail as Error).message}`;
+         submission.aiError = (currentAiError ? `${currentAiError} ` : "") + `Selain itu, gagal menyimpan status ini ke DB: ${(updateErrorOnAiServiceFail as Error).message}`;
       }
     }
-    console.log('[ResultsContent] Submission data after AI processing attempt:', JSON.stringify(submission, null, 2));
+    console.log('[ResultsContent] Submission data after AI processing attempt (SHOULD BE CAMELCASE):', JSON.stringify(submission, null, 2));
   }
   
   return (
     <ResultsDisplay 
-      test={test} 
-      submission={submission} 
+      test={test} // test is now mapped locally
+      submission={submission} // submission is now mapped locally
     />
   );
 }
 
 
-export default function TestResultsPage({ params }: TestResultsPageProps) {
+export default async function TestResultsPage({ params }: TestResultsPageProps) {
+  // params are already resolved correctly in async components by Next.js
   return (
     <div className="flex flex-col min-h-screen">
       <Header />
@@ -174,3 +236,5 @@ export default function TestResultsPage({ params }: TestResultsPageProps) {
 }
 
 export const dynamic = 'force-dynamic';
+
+    

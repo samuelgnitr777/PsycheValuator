@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { CheckCircle, Clock, Brain, FileText, Activity, AlertTriangle, User, CalendarDays, Info, Mail } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { format, isValid, parseISO } from 'date-fns'; // Ensure isValid and parseISO are imported
+import { format, isValid, parseISO } from 'date-fns'; 
 import { id as indonesiaLocale } from 'date-fns/locale';
 
 
@@ -43,6 +43,7 @@ function formatSubmittedAt(isoStringInput: string | null | undefined): string {
         console.warn("[formatSubmittedAt Client] Received invalid date string after parsing:", isoStringInput, "Parsed as:", dateObj, '. Returning "Format tanggal tidak valid".');
         return "Format tanggal tidak valid";
     }
+    // Use 'PPPPpppp' for a very full date and time format with locale
     const formattedDate = format(dateObj, "dd MMMM yyyy, HH:mm:ss", { locale: indonesiaLocale });
     console.log('[formatSubmittedAt Client] Formatted date:', formattedDate);
     return formattedDate;
@@ -55,22 +56,51 @@ function formatSubmittedAt(isoStringInput: string | null | undefined): string {
 
 export function ResultsDisplay({ test, submission }: ResultsDisplayProps) {
   // DETAILED CLIENT-SIDE LOGS
-  console.log('[ResultsDisplay Client] Props received - submission object:', JSON.parse(JSON.stringify(submission))); // Deep copy for reliable logging
-  console.log('[ResultsDisplay Client] submission.fullName directly:', submission?.fullName);
-  console.log('[ResultsDisplay Client] submission.submittedAt directly:', submission?.submittedAt);
+  console.log('[ResultsDisplay Client] Props received - submission object (raw):', submission);
+  console.log('[ResultsDisplay Client] Props received - submission object (JSON):', JSON.stringify(submission, null, 2));
+  console.log('[ResultsDisplay Client] Props received - test object (JSON):', JSON.stringify(test, null, 2));
   
-  const submittedDateString = formatSubmittedAt(submission?.submittedAt);
-  console.log('[ResultsDisplay Client] Result from formatSubmittedAt():', submittedDateString);
+  if (submission && typeof submission === 'object') {
+    console.log('[ResultsDisplay Client] Iterating submission keys:');
+    for (const key in submission) {
+      if (Object.prototype.hasOwnProperty.call(submission, key)) {
+        // @ts-ignore
+        console.log(`  Key: ${key}, Value: ${submission[key]}`);
+      }
+    }
+  } else {
+    console.log('[ResultsDisplay Client] Submission prop is null or not an object.');
+  }
+
+  // Use optional chaining and provide fallbacks
+  const fullNameDisplay = submission?.fullName || "Nama tidak diisi";
+  const submittedDateString = submission?.submittedAt ? formatSubmittedAt(submission.submittedAt) : "Tanggal tidak tersedia";
+  
+  console.log('[ResultsDisplay Client] fullName to be rendered:', fullNameDisplay);
+  console.log('[ResultsDisplay Client] submittedDateString to be rendered:', submittedDateString);
 
 
-  const answersMap = new Map(submission.answers.map(a => [a.questionId, a.value]));
-  const isLoadingAnalysis = submission.analysisStatus === 'pending_ai';
+  const answersMap = new Map(submission?.answers?.map(a => [a.questionId, a.value]) || []);
+  const isLoadingAnalysis = submission?.analysisStatus === 'pending_ai';
+
+  if (!submission || !test) {
+    return (
+        <Card className="w-full max-w-3xl mx-auto shadow-xl">
+            <CardHeader>
+                <CardTitle>Data Hasil Tidak Lengkap</CardTitle>
+            </CardHeader>
+            <CardContent>
+                <p>Informasi tes atau pengiriman tidak dapat dimuat. Silakan coba lagi.</p>
+            </CardContent>
+        </Card>
+    );
+  }
 
   return (
     <Card className="w-full max-w-3xl mx-auto shadow-xl">
       <CardHeader className="text-center bg-muted/30 rounded-t-lg p-6">
         <CheckCircle className="mx-auto h-12 w-12 text-green-500 mb-3" />
-        <CardTitle className="text-3xl font-headline text-primary">Tes Selesai: {test.title}</CardTitle>
+        <CardTitle className="text-3xl font-headline text-primary">Tes Selesai: {test?.title || "Judul Tes Tidak Ada"}</CardTitle>
         <CardDescription className="text-lg text-muted-foreground">Berikut adalah hasil dan analisis Anda.</CardDescription>
       </CardHeader>
       <CardContent className="p-6 space-y-6">
@@ -82,8 +112,7 @@ export function ResultsDisplay({ test, submission }: ResultsDisplayProps) {
                 <div className="flex items-center">
                     <User className="h-4 w-4 mr-2 text-muted-foreground"/>
                     <span className="font-medium mr-1">Nama:</span>
-                    {/* Directly render fullName, provide fallback */}
-                    <span>{submission?.fullName || "Nama tidak diisi"}</span>
+                    <span>{fullNameDisplay}</span>
                 </div>
                  <div className="flex items-center">
                     <Mail className="h-4 w-4 mr-2 text-muted-foreground"/>
@@ -93,7 +122,6 @@ export function ResultsDisplay({ test, submission }: ResultsDisplayProps) {
                 <div className="flex items-center md:col-span-2">
                     <CalendarDays className="h-4 w-4 mr-2 text-muted-foreground"/>
                     <span className="font-medium mr-1">Dikirim:</span>
-                    {/* Render the formatted date */}
                     <span>{submittedDateString}</span>
                 </div>
             </CardContent>
@@ -107,7 +135,7 @@ export function ResultsDisplay({ test, submission }: ResultsDisplayProps) {
                     <CardTitle className="text-lg font-semibold">Waktu Pengerjaan</CardTitle>
                 </CardHeader>
                 <CardContent className="p-2">
-                    <p className="text-2xl font-bold">{formatTime(submission.timeTaken)}</p>
+                    <p className="text-2xl font-bold">{formatTime(submission.timeTaken || 0)}</p>
                 </CardContent>
             </Card>
             <Card className="p-4 bg-secondary/50">
@@ -116,7 +144,7 @@ export function ResultsDisplay({ test, submission }: ResultsDisplayProps) {
                     <CardTitle className="text-lg font-semibold">Pertanyaan Dijawab</CardTitle>
                 </CardHeader>
                 <CardContent className="p-2">
-                    <p className="text-2xl font-bold">{submission.answers.length} / {test.questions.length}</p>
+                    <p className="text-2xl font-bold">{submission.answers?.length || 0} / {test.questions?.length || 0}</p>
                 </CardContent>
             </Card>
         </div>
@@ -178,7 +206,7 @@ export function ResultsDisplay({ test, submission }: ResultsDisplayProps) {
           </h3>
           <ScrollArea className="h-72 w-full rounded-md border p-1">
             <div className="p-3 space-y-3">
-            {test.questions.map((q, index) => (
+            {test.questions?.map((q, index) => (
               <div key={q.id} className="pb-3 border-b last:border-b-0">
                 <p className="font-medium text-foreground/80">P{index + 1}: {q.text}</p>
                 <p className="text-accent-foreground bg-accent/10 p-2 rounded-md mt-1 text-sm">
@@ -193,3 +221,5 @@ export function ResultsDisplay({ test, submission }: ResultsDisplayProps) {
     </Card>
   );
 }
+
+    
