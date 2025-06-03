@@ -1,7 +1,7 @@
 
 'use client';
 
-import type { Question } from '@/types';
+import type { Question, QuestionOption } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogClose, DialogFooter } from '@/components/ui/dialog';
@@ -114,8 +114,13 @@ export function QuestionList({ testId, questions, onAddQuestion, onUpdateQuestio
                   <Badge variant="secondary" className="capitalize text-xs">{getQuestionTypeDisplay(q.type)}</Badge>
                   {q.type === 'multiple-choice' && q.options && (
                     <ul className="mt-1 list-disc list-inside text-sm text-muted-foreground">
-                      {q.options.map(opt => <li key={opt.id || opt.text}>{opt.text}</li>)}
+                      {q.options.map((opt: QuestionOption) => <li key={opt.id}>{opt.text}</li>)}
                     </ul>
+                  )}
+                   {q.type === 'rating-scale' && (
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Skala: {q.scaleMin} ({q.minLabel || 'Min'}) sampai {q.scaleMax} ({q.maxLabel || 'Max'})
+                    </p>
                   )}
                 </div>
                 <div className="space-x-2 flex-shrink-0 ml-4">
@@ -198,4 +203,3 @@ export function QuestionList({ testId, questions, onAddQuestion, onUpdateQuestio
     </Card>
   );
 }
-

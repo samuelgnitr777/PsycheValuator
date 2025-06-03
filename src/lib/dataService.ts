@@ -1,5 +1,5 @@
 
-import type { Test, Question, TestSubmission } from '@/types';
+import type { Test, Question, QuestionOption, TestSubmission } from '@/types';
 
 // In-memory store for tests - replace with a database in production
 let tests: Test[] = [
@@ -44,6 +44,9 @@ let tests: Test[] = [
 // In-memory store for submissions - replace with a database in production
 let submissions: TestSubmission[] = [];
 
+// Helper to generate unique IDs
+const generateId = (prefix: string) => `${prefix}-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+
 // Test Management
 export async function getTests(): Promise<Test[]> {
   return JSON.parse(JSON.stringify(tests));
@@ -56,7 +59,7 @@ export async function getTestById(id: string): Promise<Test | undefined> {
 export async function createTest(testData: Omit<Test, 'id' | 'questions'>): Promise<Test> {
   const newTest: Test = {
     ...testData,
-    id: `test-${Date.now()}`,
+    id: generateId('test'),
     questions: [],
   };
   tests.push(newTest);
@@ -79,7 +82,27 @@ export async function deleteTest(id: string): Promise<boolean> {
 export async function addQuestionToTest(testId: string, questionData: Omit<Question, 'id'>): Promise<Question | undefined> {
   const test = tests.find(t => t.id === testId);
   if (!test) return undefined;
-  const newQuestion: Question = { ...questionData, id: `q-${testId}-${Date.now()}` };
+
+  const newQuestionId = generateId(`q-${testId}`);
+  const newQuestion: Question = {
+    id: newQuestionId,
+    text: questionData.text,
+    type: questionData.type,
+  };
+
+  if (questionData.type === 'multiple-choice' && questionData.options) {
+    newQuestion.options = questionData.options.map((opt, index) => ({
+      id: opt.id || generateId(`opt-${newQuestionId}-${index}`),
+      text: opt.text,
+    }));
+  } else if (questionData.type === 'rating-scale') {
+    newQuestion.scaleMin = questionData.scaleMin;
+    newQuestion.scaleMax = questionData.scaleMax;
+    newQuestion.minLabel = questionData.minLabel;
+    newQuestion.maxLabel = questionData.maxLabel;
+  }
+  // For 'open-ended', no specific fields beyond text and type are needed initially
+
   test.questions.push(newQuestion);
   return JSON.parse(JSON.stringify(newQuestion));
 }
@@ -89,7 +112,39 @@ export async function updateQuestionInTest(testId: string, questionId: string, q
   if (!test) return undefined;
   const questionIndex = test.questions.findIndex(q => q.id === questionId);
   if (questionIndex === -1) return undefined;
-  test.questions[questionIndex] = { ...test.questions[questionIndex], ...questionData };
+
+  const existingQuestion = test.questions[questionIndex];
+  const updatedQuestion: Question = {
+    ...existingQuestion,
+    ...questionData,
+    id: questionId, // Ensure ID is not changed
+  };
+
+  // Clear irrelevant fields based on new type
+  if (updatedQuestion.type === 'multiple-choice') {
+    updatedQuestion.options = (questionData.options || existingQuestion.options || []).map((opt, index) => ({
+      id: opt.id || generateId(`opt-${questionId}-${index}`),
+      text: opt.text,
+    }));
+    delete updatedQuestion.scaleMin;
+    delete updatedQuestion.scaleMax;
+    delete updatedQuestion.minLabel;
+    delete updatedQuestion.maxLabel;
+  } else if (updatedQuestion.type === 'rating-scale') {
+    updatedQuestion.scaleMin = questionData.scaleMin ?? existingQuestion.scaleMin;
+    updatedQuestion.scaleMax = questionData.scaleMax ?? existingQuestion.scaleMax;
+    updatedQuestion.minLabel = questionData.minLabel ?? existingQuestion.minLabel;
+    updatedQuestion.maxLabel = questionData.maxLabel ?? existingQuestion.maxLabel;
+    delete updatedQuestion.options;
+  } else if (updatedQuestion.type === 'open-ended') {
+    delete updatedQuestion.options;
+    delete updatedQuestion.scaleMin;
+    delete updatedQuestion.scaleMax;
+    delete updatedQuestion.minLabel;
+    delete updatedQuestion.maxLabel;
+  }
+
+  test.questions[questionIndex] = updatedQuestion;
   return JSON.parse(JSON.stringify(test.questions[questionIndex]));
 }
 
@@ -102,13 +157,9 @@ export async function deleteQuestionFromTest(testId: string, questionId: string)
 }
 
 // Submission Management
-function generateSubmissionId(): string {
-  return `sub-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
-}
-
 export async function createInitialSubmission(testId: string, fullName: string): Promise<TestSubmission> {
   const newSubmission: TestSubmission = {
-    id: generateSubmissionId(),
+    id: generateId('sub'),
     testId,
     fullName,
     answers: [],
