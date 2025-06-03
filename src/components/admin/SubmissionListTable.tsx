@@ -41,7 +41,7 @@ function getStatusBadgeVariant(status: TestSubmission['analysisStatus']): "defau
 
 function getStatusDisplay(status: TestSubmission['analysisStatus']): string {
   switch (status) {
-    case 'pending_ai': return 'Menunggu AI';
+    case 'pending_ai': return 'Menunggu Tinjauan'; // Updated from 'Menunggu AI'
     case 'ai_completed': return 'AI Selesai';
     case 'ai_failed_pending_manual': return 'AI Gagal (Manual)';
     case 'manual_review_completed': return 'Manual Selesai';
@@ -70,7 +70,6 @@ export function SubmissionListTable({ submissions }: SubmissionListTableProps) {
           <TableHead>Email</TableHead>
           <TableHead>Waktu Pengiriman</TableHead>
           <TableHead className="text-center">Status Analisis</TableHead>
-          <TableHead>Error AI</TableHead>
           <TableHead className="text-right">Tindakan</TableHead>
         </TableRow>
       </TableHeader>
@@ -86,9 +85,6 @@ export function SubmissionListTable({ submissions }: SubmissionListTableProps) {
                 <StatusIcon status={submission.analysisStatus} />
                 {getStatusDisplay(submission.analysisStatus)}
               </Badge>
-            </TableCell>
-            <TableCell className="max-w-xs truncate text-destructive text-xs">
-              {submission.aiError || '-'}
             </TableCell>
             <TableCell className="text-right space-x-1">
               <Button variant="outline" size="sm" asChild title="Tinjau Pengiriman">

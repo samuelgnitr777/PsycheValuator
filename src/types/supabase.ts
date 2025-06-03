@@ -97,8 +97,6 @@ export interface Database {
           time_taken: number
           submitted_at: string
           analysis_status: string
-          psychological_traits: string | null
-          ai_error: string | null
           manual_analysis_notes: string | null
           created_at: string | null
         }
@@ -111,8 +109,6 @@ export interface Database {
           time_taken: number
           submitted_at?: string
           analysis_status: string
-          psychological_traits?: string | null
-          ai_error?: string | null
           manual_analysis_notes?: string | null
           created_at?: string | null
         }
@@ -125,8 +121,6 @@ export interface Database {
           time_taken?: number
           submitted_at?: string
           analysis_status?: string
-          psychological_traits?: string | null
-          ai_error?: string | null
           manual_analysis_notes?: string | null
           created_at?: string | null
         }

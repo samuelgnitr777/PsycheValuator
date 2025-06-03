@@ -39,8 +39,6 @@ export interface TestSubmission {
   timeTaken: number; // in seconds
   submittedAt: string; // ISO string for submission timestamp
   analysisStatus: 'pending_ai' | 'ai_completed' | 'ai_failed_pending_manual' | 'manual_review_completed';
-  psychologicalTraits?: string | null; // From AI or manual review, allow null
-  aiError?: string | null; // If AI errored (e.g. 503, or flow error), allow null
   manualAnalysisNotes?: string | null; // For admin's manual review, allow null
 }
 
@@ -50,8 +48,6 @@ export type TestSubmissionUpdatePayload = {
   time_taken?: number;
   submitted_at?: string;
   analysis_status?: TestSubmission['analysisStatus'];
-  psychological_traits?: string | null;
-  ai_error?: string | null;
   manual_analysis_notes?: string | null;
 };
 

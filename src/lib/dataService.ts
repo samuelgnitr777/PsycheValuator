@@ -59,8 +59,6 @@ function mapSubmissionToCamelCase(dbSubmission: any): TestSubmission {
     timeTaken: dbSubmission.time_taken === undefined ? 0 : Number(dbSubmission.time_taken), // Ensure number
     submittedAt: dbSubmission.submitted_at || dbSubmission.submittedAt,
     analysisStatus: dbSubmission.analysis_status || dbSubmission.analysisStatus,
-    psychologicalTraits: dbSubmission.psychological_traits || dbSubmission.psychologicalTraits,
-    aiError: dbSubmission.ai_error || dbSubmission.aiError,
     manualAnalysisNotes: dbSubmission.manual_analysis_notes || dbSubmission.manualAnalysisNotes,
   };
   // console.log('[mapSubmissionToCamelCase] Input dbSubmission:', /* JSON.stringify(dbSubmission, null, 2), */ 'Output mappedSubmission:', /* JSON.stringify(mappedSubmission, null, 2) */);
@@ -424,20 +422,20 @@ export async function createInitialSubmission(testId: string, fullName: string, 
     answers: [],
     time_taken: 0,
     submitted_at: new Date().toISOString(), 
-    analysis_status: 'pending_ai' as const,
+    analysis_status: 'pending_ai' as const, // This status now means "pending manual review"
   };
   console.log('[dataService] createInitialSubmission - Payload to DB:', JSON.stringify(submissionPayload));
 
   const { data, error } = await anonSupabaseClient
     .from('submissions')
     .insert(submissionPayload)
-    .select()
+    .select('id, test_id, full_name, email, answers, time_taken, submitted_at, analysis_status, manual_analysis_notes')
     .single();
 
   if (error) {
     const context = 'creating initial submission';
     const baseMessage = `Supabase error ${context}:`;
-    console.error(baseMessage, JSON.stringify(error, null, 2)); // This logs the RLS error
+    console.error(baseMessage, JSON.stringify(error, null, 2)); 
 
     let detailedMessage = `Failed ${context}.`;
     const supabaseError = error as any; 
@@ -466,9 +464,7 @@ export async function createInitialSubmission(testId: string, fullName: string, 
   if (!data) {
     throw new Error('Failed to create initial submission: No data returned from Supabase. This can happen if RLS prevents returning the inserted row, or due to a network issue.');
   }
-  // console.log('[dataService] createInitialSubmission - Raw data from DB:', JSON.stringify(data));
   const mappedData = mapSubmissionToCamelCase(data);
-  // console.log('[dataService] createInitialSubmission - MAPPED data returned:', JSON.stringify(mappedData));
   return mappedData;
 }
 
@@ -497,9 +493,6 @@ export async function updateSubmission(submissionId: string, submissionData: Tes
   if (submissionData.time_taken !== undefined) dbUpdatePayload.time_taken = submissionData.time_taken;
   if (submissionData.submitted_at !== undefined) dbUpdatePayload.submitted_at = submissionData.submitted_at;
   if (submissionData.analysis_status !== undefined) dbUpdatePayload.analysis_status = submissionData.analysis_status;
-  
-  if (submissionData.hasOwnProperty('psychological_traits')) dbUpdatePayload.psychological_traits = submissionData.psychological_traits;
-  if (submissionData.hasOwnProperty('ai_error')) dbUpdatePayload.ai_error = submissionData.ai_error;
   if (submissionData.hasOwnProperty('manual_analysis_notes')) dbUpdatePayload.manual_analysis_notes = submissionData.manual_analysis_notes;
 
   // console.log(`[dataService] updateSubmission (${submissionId}) - Payload to DB (snake_case for internal, original for JSON like psychological_traits):`, JSON.stringify(dbUpdatePayload));
@@ -514,7 +507,7 @@ export async function updateSubmission(submissionId: string, submissionData: Tes
     .from('submissions')
     .update(dbUpdatePayload)
     .eq('id', submissionId)
-    .select() 
+    .select('id, test_id, full_name, email, answers, time_taken, submitted_at, analysis_status, manual_analysis_notes') 
     .maybeSingle();
 
   if (error) {
@@ -539,7 +532,7 @@ export async function getSubmissionById(submissionId: string): Promise<TestSubmi
   // console.log(`[dataService] getSubmissionById - Fetching submission: ${submissionId}`);
   const { data, error } = await anonSupabaseClient
     .from('submissions')
-    .select('*') 
+    .select('id, test_id, full_name, email, answers, time_taken, submitted_at, analysis_status, manual_analysis_notes') 
     .eq('id', submissionId)
     .maybeSingle();
 
@@ -580,8 +573,6 @@ export async function getAllSubmissionsAdminWithTestTitles(): Promise<(TestSubmi
       time_taken,
       submitted_at,
       analysis_status,
-      psychological_traits,
-      ai_error,
       manual_analysis_notes,
       created_at,
       tests (title) 
@@ -629,15 +620,13 @@ export async function updateSubmissionAdmin(submissionId: string, submissionData
     if (submissionData.time_taken !== undefined) dbUpdatePayload.time_taken = submissionData.time_taken;
     if (submissionData.submitted_at !== undefined) dbUpdatePayload.submitted_at = submissionData.submitted_at;
     if (submissionData.analysis_status !== undefined) dbUpdatePayload.analysis_status = submissionData.analysis_status;
-    if (submissionData.hasOwnProperty('psychological_traits')) dbUpdatePayload.psychological_traits = submissionData.psychological_traits;
-    if (submissionData.hasOwnProperty('ai_error')) dbUpdatePayload.ai_error = submissionData.ai_error;
     if (submissionData.hasOwnProperty('manual_analysis_notes')) dbUpdatePayload.manual_analysis_notes = submissionData.manual_analysis_notes;
     
     // console.log(`[dataService] updateSubmissionAdmin (${submissionId}) - Payload to DB (snake_case for internal, original for JSON):`, JSON.stringify(dbUpdatePayload));
 
     if (Object.keys(dbUpdatePayload).length === 0) {
       console.warn(`updateSubmissionAdmin called for ${submissionId} with no updatable fields. Fetching current state.`);
-      const { data: currentDataRaw, error: currentError } = await supabaseAdmin.from('submissions').select('*').eq('id', submissionId).maybeSingle();
+      const { data: currentDataRaw, error: currentError } = await supabaseAdmin.from('submissions').select('id, test_id, full_name, email, answers, time_taken, submitted_at, analysis_status, manual_analysis_notes').eq('id', submissionId).maybeSingle();
       if(currentError) throw handleAdminSupabaseError(currentError, `fetching current submission ${submissionId} in empty admin update`);
       return currentDataRaw ? mapSubmissionToCamelCase(currentDataRaw) : undefined;
     }
@@ -646,7 +635,7 @@ export async function updateSubmissionAdmin(submissionId: string, submissionData
         .from('submissions')
         .update(dbUpdatePayload)
         .eq('id', submissionId)
-        .select()
+        .select('id, test_id, full_name, email, answers, time_taken, submitted_at, analysis_status, manual_analysis_notes')
         .maybeSingle();
 
     if (error) {
@@ -671,7 +660,7 @@ export async function getSubmissionByIdAdmin(submissionId: string): Promise<Test
   const supabaseAdmin = createSupabaseServiceRoleClient();
   const { data, error } = await supabaseAdmin
     .from('submissions')
-    .select('*')
+    .select('id, test_id, full_name, email, answers, time_taken, submitted_at, analysis_status, manual_analysis_notes')
     .eq('id', submissionId)
     .maybeSingle();
 
