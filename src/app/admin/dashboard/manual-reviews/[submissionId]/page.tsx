@@ -3,9 +3,8 @@ import { getSubmissionByIdAdmin, getTestByIdAdmin } from '@/lib/dataService';
 import { notFound } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { ArrowLeft, FileSignature, CheckCircle, Clock, Brain, User, Mail, CalendarDays, Activity, AlertTriangle, Info } from 'lucide-react';
+import { ArrowLeft, FileSignature, CheckCircle, Clock, User, Mail, CalendarDays, Activity, AlertTriangle, Info } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { format, parseISO, isValid } from 'date-fns';
@@ -42,9 +41,9 @@ function formatSubmittedAt(isoString: string | null | undefined): string {
 
 function getStatusDisplay(status: TestSubmission['analysisStatus']): string {
   switch (status) {
-    case 'pending_ai': return 'Menunggu AI';
-    case 'ai_completed': return 'AI Selesai';
-    case 'ai_failed_pending_manual': return 'AI Gagal (Perlu Manual)';
+    case 'pending_ai': return 'Menunggu Tinjauan'; // Changed from 'Menunggu AI'
+    case 'ai_completed': return 'AI Selesai (Manual)'; // Potentially set manually by admin
+    case 'ai_failed_pending_manual': return 'AI Gagal (Manual)'; // Potentially set manually
     case 'manual_review_completed': return 'Manual Selesai';
     default: return status;
   }
@@ -71,7 +70,7 @@ export default async function ManualReviewDetailPage({ params }: { params: { sub
 
   if (!test) {
     console.error(`Test with ID ${submission.testId} not found for submission ${submission.id}`);
-    notFound(); 
+    notFound();
   }
   
   const answersMap = new Map(submission.answers?.map(a => [a.questionId, a.value]) || []);
@@ -115,27 +114,7 @@ export default async function ManualReviewDetailPage({ params }: { params: { sub
             </CardContent>
           </Card>
 
-          {submission.psychologicalTraits && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center"><Brain className="mr-2 text-primary"/>Analisis Sifat Psikologis (AI)</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="whitespace-pre-wrap text-sm">{submission.psychologicalTraits}</p>
-              </CardContent>
-            </Card>
-          )}
-
-          {submission.aiError && (
-            <Card className="border-destructive">
-              <CardHeader>
-                <CardTitle className="flex items-center text-destructive"><AlertTriangle className="mr-2"/>Error dari AI</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="whitespace-pre-wrap text-sm text-destructive-foreground bg-destructive/10 p-2 rounded">{submission.aiError}</p>
-              </CardContent>
-            </Card>
-          )}
+          {/* AI Analysis sections (submission.psychologicalTraits and submission.aiError) removed */}
 
           <Card>
             <CardHeader>

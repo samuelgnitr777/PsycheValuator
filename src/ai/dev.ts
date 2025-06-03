@@ -1,4 +1,6 @@
+
 import { config } from 'dotenv';
 config();
 
-import '@/ai/flows/analyze-test-responses.ts';
+// Removed: import '@/ai/flows/analyze-test-responses.ts';
+// This file is now primarily for dotenv configuration if other AI flows are added later.

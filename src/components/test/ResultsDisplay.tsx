@@ -4,10 +4,10 @@
 import { useState, useEffect } from 'react';
 import type { Test, TestSubmission } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { CheckCircle, Clock, Brain, FileText, Activity, AlertTriangle, User, CalendarDays, Info, Mail, Send, Loader2, FileSignature } from 'lucide-react';
+import { CheckCircle, Clock, Brain, FileText, Activity, User, CalendarDays, Info, Mail, FileSignature } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { format, isValid, parseISO } from 'date-fns'; 
+import { format, isValid, parseISO } from 'date-fns';
 import { id as indonesiaLocale } from 'date-fns/locale';
 
 
@@ -16,25 +16,17 @@ interface ResultsDisplayProps {
   submission: TestSubmission;
 }
 
-// This function is now only called client-side via useEffect
 function formatSubmittedAtClient(isoStringInput: string | null | undefined): string {
-  console.log('[formatSubmittedAtClient Client] Received input:', isoStringInput);
   if (!isoStringInput || typeof isoStringInput !== 'string' || isoStringInput.trim() === '') {
-    console.log('[formatSubmittedAtClient Client] Input is null, undefined, or empty string. Returning "Tanggal tidak tersedia".');
     return "Tanggal tidak tersedia";
   }
   try {
     const dateObj = parseISO(isoStringInput);
-    console.log('[formatSubmittedAtClient Client] Parsed date object:', dateObj);
     if (!isValid(dateObj)) {
-        console.warn("[formatSubmittedAtClient Client] Received invalid date string after parsing:", isoStringInput, "Parsed as:", dateObj, '. Returning "Format tanggal tidak valid".');
         return "Format tanggal tidak valid";
     }
-    const formattedDate = format(dateObj, "dd MMMM yyyy, HH:mm:ss", { locale: indonesiaLocale });
-    console.log('[formatSubmittedAtClient Client] Formatted date:', formattedDate);
-    return formattedDate;
+    return format(dateObj, "dd MMMM yyyy, HH:mm:ss", { locale: indonesiaLocale });
   } catch (error) {
-    console.error("[formatSubmittedAtClient Client] Error formatting date:", isoStringInput, error, '. Returning "Error format tanggal".');
     return "Error format tanggal";
   }
 }
@@ -64,21 +56,17 @@ export function ResultsDisplay({ test, submission }: ResultsDisplayProps) {
     } else {
       setSubmittedDateStringToRender("Tanggal tidak tersedia");
     }
-  }, [submission]); // Re-run if submission object changes
+  }, [submission]);
 
 
-  console.log('[ResultsDisplay Client] Props received - submission object (JSON):', JSON.stringify(submission, null, 2));
-  console.log('[ResultsDisplay Client] Props received - test object (JSON):', JSON.stringify(test, null, 2));
-  
   let fullNameDisplay = "Nama tidak diisi";
   if (submission && submission.fullName && String(submission.fullName).trim() !== '') {
     fullNameDisplay = String(submission.fullName);
   }
-  console.log('[ResultsDisplay Client] fullName to be rendered:', fullNameDisplay);
-
 
   const answersMap = new Map(submission?.answers?.map(a => [a.questionId, a.value]) || []);
-  const isLoadingAnalysis = submission?.analysisStatus === 'pending_ai';
+  // AI loading state is no longer needed
+  // const isLoadingAnalysis = submission?.analysisStatus === 'pending_ai';
 
   if (!submission || !test) {
     return (
@@ -147,53 +135,10 @@ export function ResultsDisplay({ test, submission }: ResultsDisplayProps) {
         </div>
 
         <Separator />
-
-        <div>
-          <h3 className="text-xl font-semibold mb-3 flex items-center text-primary">
-            <Brain className="mr-2 h-6 w-6 text-[hsl(var(--accent))]" />
-            Analisis Sifat Psikologis (AI)
-          </h3>
-          {isLoadingAnalysis ? (
-            <Card className="bg-muted/20 border">
-                <CardContent className="p-4 text-center space-y-2">
-                    <Loader2 className="animate-spin h-8 w-8 text-primary mx-auto mb-2" />
-                    <p className="font-semibold text-primary">Menganalisis hasil Anda dengan AI...</p>
-                    <p className="text-sm text-muted-foreground">Harap tunggu sebentar.</p>
-                </CardContent>
-            </Card>
-          ) : submission.analysisStatus === 'ai_completed' && submission.psychologicalTraits ? (
-            <Card className="bg-background border-primary/30">
-                <CardContent className="p-4">
-                    <p className="whitespace-pre-wrap leading-relaxed text-foreground/90">{submission.psychologicalTraits}</p>
-                </CardContent>
-            </Card>
-          ) : submission.analysisStatus === 'ai_failed_pending_manual' ? (
-            <Card className="bg-yellow-50 border-yellow-300">
-              <CardContent className="p-4 text-center space-y-2">
-                <Info className="mx-auto h-8 w-8 text-yellow-500 mb-2" />
-                <p className="text-yellow-700 font-semibold">Analisis AI Tertunda</p>
-                <p className="text-yellow-600 text-sm">
-                  {submission.aiError ? `Pesan error: ${submission.aiError}. ` : "Terjadi masalah saat membuat analisis otomatis dari AI. "}
-                  Tim kami akan melakukan tinjauan lebih lanjut. Hasil akhir akan dikirim melalui email.
-                </p>
-              </CardContent>
-            </Card>
-          ) : ( // Covers 'manual_review_completed' or other statuses where AI traits might not be primary or available
-             <Card className="bg-muted/20 border">
-              <CardContent className="p-4 text-center space-y-2">
-                 <Info className="mx-auto h-8 w-8 text-muted-foreground mb-2" />
-                 <p className="text-muted-foreground">
-                  {submission.psychologicalTraits 
-                    ? "Analisis AI telah diproses. Lihat di atas jika tersedia." 
-                    : "Analisis AI tidak tersedia atau sedang dalam peninjauan manual."
-                  }
-                </p>
-              </CardContent>
-            </Card>
-          )}
-        </div>
         
-        <Separator />
+        {/* AI Analysis Section Removed */}
+        {/* The section for AI psychological traits and AI errors has been removed. */}
+        {/* The status 'pending_ai' now implies waiting for manual review. */}
 
         <div>
           <h3 className="text-xl font-semibold mb-3 flex items-center text-primary">
@@ -205,6 +150,8 @@ export function ResultsDisplay({ test, submission }: ResultsDisplayProps) {
                   <Mail className="mx-auto h-8 w-8 text-blue-500 mb-2" />
                   <p className="text-blue-700 font-semibold">Hasil Akhir via Email</p>
                   <p className="text-blue-600 text-sm">
+                    Status pengiriman Anda saat ini adalah: <span className="font-bold">{submission.analysisStatus === 'pending_ai' ? 'Menunggu Tinjauan' : submission.analysisStatus === 'manual_review_completed' ? 'Tinjauan Manual Selesai' : 'Dalam Proses'}.</span>
+                    <br/>
                     Hasil akhir yang telah ditinjau secara komprehensif oleh administrator kami akan diproses dan dikirimkan ke alamat email Anda ({submission?.email || "email Anda"}). Mohon periksa email Anda secara berkala untuk pemberitahuan selanjutnya.
                   </p>
                   {submission.analysisStatus === 'manual_review_completed' && submission.manualAnalysisNotes && (
@@ -240,4 +187,3 @@ export function ResultsDisplay({ test, submission }: ResultsDisplayProps) {
     </Card>
   );
 }
-    
