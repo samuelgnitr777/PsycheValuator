@@ -1,3 +1,4 @@
+
 import { Suspense } from 'react';
 import { getTestById } from '@/lib/dataService';
 import { analyzeTestResponses, AnalyzeTestResponsesOutput } from '@/ai/flows/analyze-test-responses';
@@ -27,15 +28,15 @@ async function ResultsContent({ testId, submissionDataString }: { testId: string
        <Card className="w-full max-w-lg mx-auto text-center shadow-lg">
         <CardHeader>
           <AlertTriangle className="mx-auto h-12 w-12 text-destructive mb-4" />
-          <CardTitle className="text-2xl font-headline">Error: Missing Submission Data</CardTitle>
+          <CardTitle className="text-2xl font-headline">Error: Data Pengiriman Hilang</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-muted-foreground">
-            We couldn't find your test responses. This might be due to a technical issue or an invalid link.
+            Kami tidak dapat menemukan respons tes Anda. Ini mungkin karena masalah teknis atau tautan yang tidak valid.
           </p>
           <Button asChild>
             <Link href="/">
-              <Home className="mr-2 h-4 w-4" /> Go to Homepage
+              <Home className="mr-2 h-4 w-4" /> Kembali ke Beranda
             </Link>
           </Button>
         </CardContent>
@@ -51,15 +52,15 @@ async function ResultsContent({ testId, submissionDataString }: { testId: string
        <Card className="w-full max-w-lg mx-auto text-center shadow-lg">
         <CardHeader>
           <AlertTriangle className="mx-auto h-12 w-12 text-destructive mb-4" />
-          <CardTitle className="text-2xl font-headline">Error: Invalid Submission Data</CardTitle>
+          <CardTitle className="text-2xl font-headline">Error: Data Pengiriman Tidak Valid</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-muted-foreground">
-            There was an issue processing your test responses. The data format is incorrect.
+            Terjadi masalah saat memproses respons tes Anda. Format data salah.
           </p>
           <Button asChild>
             <Link href={`/tests/${testId}`}>
-             <RefreshCw className="mr-2 h-4 w-4" /> Retake Test
+             <RefreshCw className="mr-2 h-4 w-4" /> Ulangi Tes
             </Link>
           </Button>
         </CardContent>
@@ -67,11 +68,10 @@ async function ResultsContent({ testId, submissionDataString }: { testId: string
     );
   }
   
-  // Prepare responses string for AI
   const responsesString = submission.answers
     .map(ans => {
       const question = test.questions.find(q => q.id === ans.questionId);
-      return `Q: ${question?.text || 'Unknown Question'}\nA: ${ans.value}`;
+      return `Q: ${question?.text || 'Pertanyaan Tidak Diketahui'}\nA: ${ans.value}`;
     })
     .join('\n\n');
 
@@ -84,7 +84,6 @@ async function ResultsContent({ testId, submissionDataString }: { testId: string
     });
   } catch (error) {
     console.error("AI Analysis Error:", error);
-    // analysisResult remains null
   } finally {
     isLoadingAnalysis = false;
   }
@@ -94,9 +93,7 @@ async function ResultsContent({ testId, submissionDataString }: { testId: string
       test={test} 
       submission={submission} 
       analysis={analysisResult}
-      isLoadingAnalysis={isLoadingAnalysis} // This will be false by the time it renders here.
-                                          // For true loading state, this needs to be client-side or suspense boundary.
-                                          // The provided design makes this server component, so AI call is blocking.
+      isLoadingAnalysis={isLoadingAnalysis}
     />
   );
 }
@@ -110,8 +107,8 @@ export default function TestResultsPage({ params, searchParams }: TestResultsPag
         <Suspense fallback={
           <Card className="w-full max-w-3xl mx-auto shadow-xl p-8 text-center">
             <RefreshCw className="mx-auto h-12 w-12 animate-spin text-primary mb-4" />
-            <h2 className="text-2xl font-semibold">Loading Your Results...</h2>
-            <p className="text-muted-foreground">Please wait while we process your submission and generate analysis.</p>
+            <h2 className="text-2xl font-semibold">Memuat Hasil Anda...</h2>
+            <p className="text-muted-foreground">Harap tunggu selagi kami memproses pengiriman Anda dan membuat analisis.</p>
           </Card>
         }>
           {/* @ts-expect-error Async Server Component */}
@@ -120,21 +117,22 @@ export default function TestResultsPage({ params, searchParams }: TestResultsPag
         <div className="flex gap-4 mt-8">
             <Button asChild variant="outline">
                 <Link href="/">
-                    <Home className="mr-2 h-4 w-4" /> Back to Homepage
+                    <Home className="mr-2 h-4 w-4" /> Kembali ke Beranda
                 </Link>
             </Button>
             <Button asChild>
                 <Link href={`/tests/${params.testId}`}>
-                    <RefreshCw className="mr-2 h-4 w-4" /> Take Test Again
+                    <RefreshCw className="mr-2 h-4 w-4" /> Ikuti Tes Lagi
                 </Link>
             </Button>
         </div>
       </main>
       <footer className="text-center py-6 border-t text-sm text-muted-foreground">
-        Thank you for using PsycheValuator!
+        Terima kasih telah menggunakan PsycheValuator!
       </footer>
     </div>
   );
 }
 
-export const dynamic = 'force-dynamic'; // Ensure AI call is fresh if it were client-side triggered
+export const dynamic = 'force-dynamic';
+

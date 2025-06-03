@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { Question } from '@/types';
@@ -29,6 +30,15 @@ const QuestionTypeIcon = ({ type }: { type: Question['type'] }) => {
   }
 };
 
+const getQuestionTypeDisplay = (type: Question['type']) => {
+  switch(type) {
+    case 'multiple-choice': return 'Pilihan Ganda';
+    case 'rating-scale': return 'Skala Peringkat';
+    case 'open-ended': return 'Jawaban Terbuka';
+    default: return type;
+  }
+}
+
 export function QuestionList({ testId, questions, onAddQuestion, onUpdateQuestion, onDeleteQuestion }: QuestionListProps) {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -40,10 +50,10 @@ export function QuestionList({ testId, questions, onAddQuestion, onUpdateQuestio
     setIsSubmitting(true);
     const result = await onAddQuestion(testId, data);
     if (result.success) {
-      toast({ title: 'Question Added', description: 'The new question has been added to the test.' });
+      toast({ title: 'Pertanyaan Ditambahkan', description: 'Pertanyaan baru telah ditambahkan ke tes.' });
       setIsAddModalOpen(false);
     } else {
-      toast({ title: 'Error Adding Question', description: result.message || 'Could not add question.', variant: 'destructive' });
+      toast({ title: 'Error Menambah Pertanyaan', description: result.message || 'Tidak dapat menambahkan pertanyaan.', variant: 'destructive' });
     }
     setIsSubmitting(false);
   };
@@ -53,11 +63,11 @@ export function QuestionList({ testId, questions, onAddQuestion, onUpdateQuestio
     setIsSubmitting(true);
     const result = await onUpdateQuestion(testId, editingQuestion.id, data);
     if (result.success) {
-      toast({ title: 'Question Updated', description: 'The question has been updated.' });
+      toast({ title: 'Pertanyaan Diperbarui', description: 'Pertanyaan telah diperbarui.' });
       setIsEditModalOpen(false);
       setEditingQuestion(undefined);
     } else {
-      toast({ title: 'Error Updating Question', description: result.message || 'Could not update question.', variant: 'destructive' });
+      toast({ title: 'Error Memperbarui Pertanyaan', description: result.message || 'Tidak dapat memperbarui pertanyaan.', variant: 'destructive' });
     }
     setIsSubmitting(false);
   };
@@ -65,9 +75,9 @@ export function QuestionList({ testId, questions, onAddQuestion, onUpdateQuestio
   const handleDelete = async (questionId: string) => {
     const result = await onDeleteQuestion(testId, questionId);
     if (result.success) {
-      toast({ title: 'Question Deleted', description: 'The question has been removed from the test.' });
+      toast({ title: 'Pertanyaan Dihapus', description: 'Pertanyaan telah dihapus dari tes.' });
     } else {
-      toast({ title: 'Error Deleting Question', description: result.message || 'Could not delete question.', variant: 'destructive' });
+      toast({ title: 'Error Menghapus Pertanyaan', description: result.message || 'Tidak dapat menghapus pertanyaan.', variant: 'destructive' });
     }
   };
 
@@ -75,19 +85,19 @@ export function QuestionList({ testId, questions, onAddQuestion, onUpdateQuestio
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
         <div>
-          <CardTitle className="font-headline">Test Questions</CardTitle>
-          <CardDescription>Manage the questions for this test.</CardDescription>
+          <CardTitle className="font-headline">Pertanyaan Tes</CardTitle>
+          <CardDescription>Kelola pertanyaan untuk tes ini.</CardDescription>
         </div>
         <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
           <DialogTrigger asChild>
-            <Button><PlusCircle className="mr-2 h-4 w-4" /> Add Question</Button>
+            <Button><PlusCircle className="mr-2 h-4 w-4" /> Tambah Pertanyaan</Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-2xl">
             <DialogHeader>
-              <DialogTitle>Add New Question</DialogTitle>
-              <DialogDescription>Configure the details for the new question.</DialogDescription>
+              <DialogTitle>Tambah Pertanyaan Baru</DialogTitle>
+              <DialogDescription>Konfigurasikan detail untuk pertanyaan baru.</DialogDescription>
             </DialogHeader>
-            <QuestionForm onSubmit={handleAddSubmit} isSubmitting={isSubmitting} submitButtonText="Add Question" />
+            <QuestionForm onSubmit={handleAddSubmit} isSubmitting={isSubmitting} submitButtonText="Tambah Pertanyaan" />
           </DialogContent>
         </Dialog>
       </CardHeader>
@@ -99,9 +109,9 @@ export function QuestionList({ testId, questions, onAddQuestion, onUpdateQuestio
                 <div>
                   <div className="flex items-center gap-2 mb-1">
                      <QuestionTypeIcon type={q.type} />
-                    <span className="font-semibold">Q{index + 1}: {q.text}</span>
+                    <span className="font-semibold">P{index + 1}: {q.text}</span>
                   </div>
-                  <Badge variant="secondary" className="capitalize text-xs">{q.type.replace('-', ' ')}</Badge>
+                  <Badge variant="secondary" className="capitalize text-xs">{getQuestionTypeDisplay(q.type)}</Badge>
                   {q.type === 'multiple-choice' && q.options && (
                     <ul className="mt-1 list-disc list-inside text-sm text-muted-foreground">
                       {q.options.map(opt => <li key={opt.id || opt.text}>{opt.text}</li>)}
@@ -125,13 +135,13 @@ export function QuestionList({ testId, questions, onAddQuestion, onUpdateQuestio
                     </DialogTrigger>
                     <DialogContent className="sm:max-w-2xl">
                       <DialogHeader>
-                        <DialogTitle>Edit Question</DialogTitle>
+                        <DialogTitle>Edit Pertanyaan</DialogTitle>
                       </DialogHeader>
-                      {editingQuestion && <QuestionForm initialData={editingQuestion} onSubmit={handleEditSubmit} isSubmitting={isSubmitting} submitButtonText="Update Question" />}
+                      {editingQuestion && <QuestionForm initialData={editingQuestion} onSubmit={handleEditSubmit} isSubmitting={isSubmitting} submitButtonText="Perbarui Pertanyaan" />}
                        <DialogFooter>
                           <DialogClose asChild>
                             <Button type="button" variant="outline">
-                              Cancel
+                              Batal
                             </Button>
                           </DialogClose>
                         </DialogFooter>
@@ -145,14 +155,14 @@ export function QuestionList({ testId, questions, onAddQuestion, onUpdateQuestio
                     </AlertDialogTrigger>
                     <AlertDialogContent>
                       <AlertDialogHeader>
-                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                        <AlertDialogTitle>Apakah Anda yakin?</AlertDialogTitle>
                         <AlertDialogDescription>
-                          This will permanently delete this question.
+                          Ini akan menghapus pertanyaan ini secara permanen.
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => handleDelete(q.id)}>Delete</AlertDialogAction>
+                        <AlertDialogCancel>Batal</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => handleDelete(q.id)}>Hapus</AlertDialogAction>
                       </AlertDialogFooter>
                     </AlertDialogContent>
                   </AlertDialog>
@@ -164,20 +174,20 @@ export function QuestionList({ testId, questions, onAddQuestion, onUpdateQuestio
           <div className="text-center py-10">
             <Image 
               src="https://placehold.co/300x200.png" 
-              alt="No questions added" 
+              alt="Belum ada pertanyaan ditambahkan" 
               width={300} 
               height={200} 
               className="mx-auto mb-4 rounded-md"
               data-ai-hint="empty list question"
             />
-            <p className="text-muted-foreground text-lg">No questions have been added to this test yet.</p>
+            <p className="text-muted-foreground text-lg">Belum ada pertanyaan yang ditambahkan ke tes ini.</p>
             <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
               <DialogTrigger asChild>
-                <Button className="mt-4"><PlusCircle className="mr-2 h-4 w-4" /> Add First Question</Button>
+                <Button className="mt-4"><PlusCircle className="mr-2 h-4 w-4" /> Tambah Pertanyaan Pertama</Button>
               </DialogTrigger>
               <DialogContent className="sm:max-w-2xl">
                 <DialogHeader>
-                  <DialogTitle>Add New Question</DialogTitle>
+                  <DialogTitle>Tambah Pertanyaan Baru</DialogTitle>
                 </DialogHeader>
                 <QuestionForm onSubmit={handleAddSubmit} isSubmitting={isSubmitting} />
               </DialogContent>
@@ -188,3 +198,4 @@ export function QuestionList({ testId, questions, onAddQuestion, onUpdateQuestio
     </Card>
   );
 }
+

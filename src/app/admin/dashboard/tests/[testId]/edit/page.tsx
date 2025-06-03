@@ -1,3 +1,4 @@
+
 import { getTestById } from '@/lib/dataService';
 import { TestForm } from '@/components/admin/TestForm';
 import { QuestionList } from '@/components/admin/QuestionList';
@@ -7,8 +8,8 @@ import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { ArrowLeft, Edit3 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import EditTestFormClient from './EditTestFormClient'; // Wrapper for TestForm if it needs to be client
-import ManageQuestionsClient from './ManageQuestionsClient'; // Wrapper for QuestionList
+import EditTestFormClient from './EditTestFormClient'; 
+import ManageQuestionsClient from './ManageQuestionsClient'; 
 
 export default async function EditTestPage({ params }: { params: { testId: string } }) {
   const test = await getTestById(params.testId);
@@ -23,21 +24,21 @@ export default async function EditTestPage({ params }: { params: { testId: strin
         <div className="flex items-center gap-3">
           <Edit3 className="h-8 w-8 text-primary" />
           <div>
-            <h1 className="text-2xl font-bold font-headline">Edit Test: {test.title}</h1>
-            <p className="text-muted-foreground">Modify test details and manage its questions.</p>
+            <h1 className="text-2xl font-bold font-headline">Edit Tes: {test.title}</h1>
+            <p className="text-muted-foreground">Ubah detail tes dan kelola pertanyaannya.</p>
           </div>
         </div>
         <Button variant="outline" asChild>
           <Link href="/admin/dashboard/tests">
-            <ArrowLeft className="mr-2 h-4 w-4" /> Back to Test List
+            <ArrowLeft className="mr-2 h-4 w-4" /> Kembali ke Daftar Tes
           </Link>
         </Button>
       </div>
 
       <Tabs defaultValue="details" className="w-full">
         <TabsList className="grid w-full grid-cols-2 md:w-[400px]">
-          <TabsTrigger value="details">Test Details</TabsTrigger>
-          <TabsTrigger value="questions">Manage Questions</TabsTrigger>
+          <TabsTrigger value="details">Detail Tes</TabsTrigger>
+          <TabsTrigger value="questions">Kelola Pertanyaan</TabsTrigger>
         </TabsList>
         <TabsContent value="details" className="mt-6">
           <EditTestFormClient initialTest={test} updateTestAction={updateTestAction} />
@@ -54,3 +55,4 @@ export default async function EditTestPage({ params }: { params: { testId: strin
     </div>
   );
 }
+

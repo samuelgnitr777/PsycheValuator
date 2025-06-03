@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -12,12 +13,12 @@ import type { Question, QuestionType } from '@/types';
 import { PlusCircle, Trash2, Save } from 'lucide-react';
 
 const questionOptionSchema = z.object({
-  id: z.string().optional(), // Optional for new options
-  text: z.string().min(1, { message: "Option text cannot be empty." }),
+  id: z.string().optional(), 
+  text: z.string().min(1, { message: "Teks opsi tidak boleh kosong." }),
 });
 
 const questionFormSchema = z.object({
-  text: z.string().min(5, { message: 'Question text must be at least 5 characters long.' }),
+  text: z.string().min(5, { message: 'Teks pertanyaan minimal 5 karakter.' }),
   type: z.enum(['multiple-choice', 'rating-scale', 'open-ended']),
   options: z.array(questionOptionSchema).optional(),
   scaleMin: z.number().optional(),
@@ -30,7 +31,7 @@ const questionFormSchema = z.object({
   }
   return true;
 }, {
-  message: 'Multiple-choice questions must have at least 2 options.',
+  message: 'Pertanyaan pilihan ganda harus memiliki setidaknya 2 opsi.',
   path: ['options'],
 }).refine(data => {
   if (data.type === 'rating-scale') {
@@ -38,7 +39,7 @@ const questionFormSchema = z.object({
   }
   return true;
 }, {
-  message: 'For rating scales, min value must be less than max value.',
+  message: 'Untuk skala peringkat, nilai min harus kurang dari nilai maks.',
   path: ['scaleMax'],
 });
 
@@ -51,7 +52,7 @@ interface QuestionFormProps {
   submitButtonText?: string;
 }
 
-export function QuestionForm({ initialData, onSubmit, isSubmitting, submitButtonText = "Save Question" }: QuestionFormProps) {
+export function QuestionForm({ initialData, onSubmit, isSubmitting, submitButtonText = "Simpan Pertanyaan" }: QuestionFormProps) {
   const form = useForm<QuestionFormValues>({
     resolver: zodResolver(questionFormSchema),
     defaultValues: {
@@ -60,8 +61,8 @@ export function QuestionForm({ initialData, onSubmit, isSubmitting, submitButton
       options: initialData?.type === 'multiple-choice' ? (initialData.options || [{ text: '' }, { text: '' }]) : [],
       scaleMin: initialData?.type === 'rating-scale' ? initialData.scaleMin : 1,
       scaleMax: initialData?.type === 'rating-scale' ? initialData.scaleMax : 5,
-      minLabel: initialData?.type === 'rating-scale' ? initialData.minLabel : 'Strongly Disagree',
-      maxLabel: initialData?.type === 'rating-scale' ? initialData.maxLabel : 'Strongly Agree',
+      minLabel: initialData?.type === 'rating-scale' ? initialData.minLabel : 'Sangat Tidak Setuju',
+      maxLabel: initialData?.type === 'rating-scale' ? initialData.maxLabel : 'Sangat Setuju',
     },
   });
 
@@ -80,9 +81,9 @@ export function QuestionForm({ initialData, onSubmit, isSubmitting, submitButton
           name="text"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Question Text</FormLabel>
+              <FormLabel>Teks Pertanyaan</FormLabel>
               <FormControl>
-                <Textarea placeholder="Enter the question text..." {...field} rows={3}/>
+                <Textarea placeholder="Masukkan teks pertanyaan..." {...field} rows={3}/>
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -94,17 +95,17 @@ export function QuestionForm({ initialData, onSubmit, isSubmitting, submitButton
           name="type"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Question Type</FormLabel>
+              <FormLabel>Tipe Pertanyaan</FormLabel>
               <Select onValueChange={field.onChange} defaultValue={field.value}>
                 <FormControl>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select a question type" />
+                    <SelectValue placeholder="Pilih tipe pertanyaan" />
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  <SelectItem value="multiple-choice">Multiple Choice</SelectItem>
-                  <SelectItem value="rating-scale">Rating Scale</SelectItem>
-                  <SelectItem value="open-ended">Open-ended</SelectItem>
+                  <SelectItem value="multiple-choice">Pilihan Ganda</SelectItem>
+                  <SelectItem value="rating-scale">Skala Peringkat</SelectItem>
+                  <SelectItem value="open-ended">Jawaban Terbuka</SelectItem>
                 </SelectContent>
               </Select>
               <FormMessage />
@@ -114,7 +115,7 @@ export function QuestionForm({ initialData, onSubmit, isSubmitting, submitButton
 
         {questionType === 'multiple-choice' && (
           <div className="space-y-4 p-4 border rounded-md">
-            <FormLabel>Options</FormLabel>
+            <FormLabel>Opsi Jawaban</FormLabel>
             {fields.map((field, index) => (
               <FormField
                 key={field.id}
@@ -124,7 +125,7 @@ export function QuestionForm({ initialData, onSubmit, isSubmitting, submitButton
                   <FormItem>
                     <div className="flex items-center gap-2">
                       <FormControl>
-                        <Input placeholder={`Option ${index + 1}`} {...optionField} />
+                        <Input placeholder={`Opsi ${index + 1}`} {...optionField} />
                       </FormControl>
                       {fields.length > 2 && (
                         <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}>
@@ -138,7 +139,7 @@ export function QuestionForm({ initialData, onSubmit, isSubmitting, submitButton
               />
             ))}
             <Button type="button" variant="outline" size="sm" onClick={() => append({ text: '' })}>
-              <PlusCircle className="mr-2 h-4 w-4" /> Add Option
+              <PlusCircle className="mr-2 h-4 w-4" /> Tambah Opsi
             </Button>
              {form.formState.errors.options && <FormMessage>{form.formState.errors.options.message}</FormMessage>}
           </div>
@@ -152,7 +153,7 @@ export function QuestionForm({ initialData, onSubmit, isSubmitting, submitButton
                 name="scaleMin"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Min Value</FormLabel>
+                    <FormLabel>Nilai Min</FormLabel>
                     <FormControl>
                       <Input type="number" {...field} onChange={e => field.onChange(parseInt(e.target.value,10))}/>
                     </FormControl>
@@ -165,7 +166,7 @@ export function QuestionForm({ initialData, onSubmit, isSubmitting, submitButton
                 name="scaleMax"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Max Value</FormLabel>
+                    <FormLabel>Nilai Maks</FormLabel>
                     <FormControl>
                        <Input type="number" {...field} onChange={e => field.onChange(parseInt(e.target.value,10))}/>
                     </FormControl>
@@ -179,9 +180,9 @@ export function QuestionForm({ initialData, onSubmit, isSubmitting, submitButton
                 name="minLabel"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Min Label (Optional)</FormLabel>
+                    <FormLabel>Label Min (Opsional)</FormLabel>
                     <FormControl>
-                      <Input placeholder="e.g., Strongly Disagree" {...field} />
+                      <Input placeholder="cth., Sangat Tidak Setuju" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -192,9 +193,9 @@ export function QuestionForm({ initialData, onSubmit, isSubmitting, submitButton
                 name="maxLabel"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Max Label (Optional)</FormLabel>
+                    <FormLabel>Label Maks (Opsional)</FormLabel>
                     <FormControl>
-                      <Input placeholder="e.g., Strongly Agree" {...field} />
+                      <Input placeholder="cth., Sangat Setuju" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -206,9 +207,10 @@ export function QuestionForm({ initialData, onSubmit, isSubmitting, submitButton
 
         <Button type="submit" disabled={isSubmitting} className="w-full sm:w-auto">
            <Save className="mr-2 h-4 w-4" />
-          {isSubmitting ? 'Saving...' : submitButtonText}
+          {isSubmitting ? 'Menyimpan...' : submitButtonText}
         </Button>
       </form>
     </Form>
   );
 }
+

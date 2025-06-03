@@ -1,3 +1,4 @@
+
 'use client';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -31,13 +32,13 @@ export default function Header() {
                 </Link>
               </Button>
               <Button variant="outline" size="sm" onClick={handleLogout}>
-                <LogOut className="mr-2 h-4 w-4 text-[hsl(var(--accent))]" /> Logout
+                <LogOut className="mr-2 h-4 w-4 text-[hsl(var(--accent))]" /> Keluar
               </Button>
             </>
           ) : (
             <Button variant="ghost" size="sm" asChild>
               <Link href="/admin/login">
-                <LogIn className="mr-2 h-4 w-4 text-[hsl(var(--accent))]" /> Admin Login
+                <LogIn className="mr-2 h-4 w-4 text-[hsl(var(--accent))]" /> Login Admin
               </Link>
             </Button>
           )}
@@ -46,3 +47,4 @@ export default function Header() {
     </header>
   );
 }
+

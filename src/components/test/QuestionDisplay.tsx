@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Question, QuestionOption } from '@/types';
@@ -6,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Slider } from '@/components/ui/slider';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { TimerIcon } from 'lucide-react';
 
 interface QuestionDisplayProps {
   question: Question;
@@ -13,17 +15,34 @@ interface QuestionDisplayProps {
   onAnswerChange: (value: string | number) => void;
   questionNumber: number;
   totalQuestions: number;
+  timeLeft: number;
 }
 
-export function QuestionDisplay({ question, currentAnswer, onAnswerChange, questionNumber, totalQuestions }: QuestionDisplayProps) {
+export function QuestionDisplay({ question, currentAnswer, onAnswerChange, questionNumber, totalQuestions, timeLeft }: QuestionDisplayProps) {
+  
+  const getQuestionTypeDisplay = (type: Question['type']) => {
+    switch(type) {
+      case 'multiple-choice': return 'Pilihan Ganda';
+      case 'rating-scale': return 'Skala Peringkat';
+      case 'open-ended': return 'Jawaban Terbuka';
+      default: return type;
+    }
+  }
+
   return (
     <Card className="w-full shadow-lg">
       <CardHeader>
-        <div className="flex justify-between items-center">
-          <CardTitle className="font-headline text-xl md:text-2xl">Question {questionNumber} of {totalQuestions}</CardTitle>
-          <span className="text-sm text-muted-foreground capitalize">{question.type.replace('-', ' ')}</span>
+        <div className="flex justify-between items-center mb-2">
+          <CardTitle className="font-headline text-xl md:text-2xl">Pertanyaan {questionNumber} dari {totalQuestions}</CardTitle>
+          <span className="text-sm text-muted-foreground capitalize">{getQuestionTypeDisplay(question.type)}</span>
         </div>
-        <CardDescription className="text-lg pt-2">{question.text}</CardDescription>
+        <div className="flex justify-between items-center">
+            <CardDescription className="text-lg pt-2 pr-4 flex-1">{question.text}</CardDescription>
+            <div className="flex items-center text-lg font-semibold text-primary p-2 border border-primary/50 rounded-md">
+                <TimerIcon className="h-5 w-5 mr-2" />
+                <span>{timeLeft} detik</span>
+            </div>
+        </div>
       </CardHeader>
       <CardContent>
         <div className="space-y-6">
@@ -57,7 +76,7 @@ export function QuestionDisplay({ question, currentAnswer, onAnswerChange, quest
                 <span>{question.maxLabel || question.scaleMax}</span>
               </div>
               <div className="text-center font-semibold text-lg text-primary">
-                Selected Value: {currentAnswer !== undefined ? currentAnswer : 'Not selected'}
+                Nilai Terpilih: {currentAnswer !== undefined ? currentAnswer : 'Belum dipilih'}
               </div>
             </div>
           )}
@@ -66,7 +85,7 @@ export function QuestionDisplay({ question, currentAnswer, onAnswerChange, quest
             <Textarea
               value={currentAnswer as string | undefined}
               onChange={(e) => onAnswerChange(e.target.value)}
-              placeholder="Type your answer here..."
+              placeholder="Ketik jawaban Anda di sini..."
               rows={5}
               className="text-base"
             />
@@ -76,3 +95,4 @@ export function QuestionDisplay({ question, currentAnswer, onAnswerChange, quest
     </Card>
   );
 }
+

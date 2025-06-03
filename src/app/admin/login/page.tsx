@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -27,7 +28,6 @@ export default function AdminLoginPage() {
     }
   }, [router]);
   
-  // Effect to sync with context, in case another tab logs in/out
   useEffect(() => {
     if (contextIsLoggedIn) {
       router.replace('/admin/dashboard');
@@ -43,12 +43,12 @@ export default function AdminLoginPage() {
     const success = loginAdmin(password);
 
     if (success) {
-      setIsLoggedIn(true); // Update context
-      toast({ title: 'Login Successful', description: 'Redirecting to dashboard...' });
+      setIsLoggedIn(true); 
+      toast({ title: 'Login Berhasil', description: 'Mengarahkan ke dasbor...' });
       router.push('/admin/dashboard');
     } else {
-      setError('Invalid password. Please try again.');
-      toast({ title: 'Login Failed', description: 'Invalid password.', variant: 'destructive' });
+      setError('Kata sandi tidak valid. Silakan coba lagi.');
+      toast({ title: 'Login Gagal', description: 'Kata sandi tidak valid.', variant: 'destructive' });
       setIsLoading(false);
     }
   };
@@ -57,19 +57,19 @@ export default function AdminLoginPage() {
     <div className="min-h-screen flex flex-col items-center justify-center bg-muted/40 p-4">
        <div className="absolute top-4 left-4">
         <Button variant="outline" asChild>
-          <Link href="/">Back to Home</Link>
+          <Link href="/">Kembali ke Beranda</Link>
         </Button>
       </div>
       <Card className="w-full max-w-sm shadow-2xl">
         <CardHeader className="text-center">
           <KeyRound className="mx-auto h-12 w-12 text-primary mb-2" />
-          <CardTitle className="text-2xl font-headline">Admin Login</CardTitle>
-          <CardDescription>Enter your password to access the dashboard.</CardDescription>
+          <CardTitle className="text-2xl font-headline">Login Admin</CardTitle>
+          <CardDescription>Masukkan kata sandi Anda untuk mengakses dasbor.</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password">Kata Sandi</Label>
               <Input
                 id="password"
                 type="password"
@@ -81,16 +81,17 @@ export default function AdminLoginPage() {
             </div>
             {error && <p className="text-sm text-destructive">{error}</p>}
             <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? 'Logging in...' : <> <LogIn className="mr-2 h-4 w-4" /> Login </>}
+              {isLoading ? 'Sedang masuk...' : <> <LogIn className="mr-2 h-4 w-4" /> Masuk </>}
             </Button>
           </form>
         </CardContent>
         <CardFooter>
           <p className="text-xs text-muted-foreground text-center w-full">
-            This is a restricted area. Authorized personnel only.
+            Ini adalah area terbatas. Hanya untuk personel yang berwenang.
           </p>
         </CardFooter>
       </Card>
     </div>
   );
 }
+

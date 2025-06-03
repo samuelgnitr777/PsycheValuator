@@ -1,3 +1,4 @@
+
 import Link from 'next/link';
 import { getTests } from '@/lib/dataService';
 import { Button } from '@/components/ui/button';
@@ -16,22 +17,22 @@ export default async function ManageTestsPage() {
         <div className="flex items-center gap-3">
           <ListChecks className="h-8 w-8 text-primary" />
           <div>
-            <h1 className="text-2xl font-bold font-headline">Manage Tests</h1>
-            <p className="text-muted-foreground">Create, view, edit, and delete psychology tests.</p>
+            <h1 className="text-2xl font-bold font-headline">Kelola Tes</h1>
+            <p className="text-muted-foreground">Buat, lihat, edit, dan hapus tes psikologi.</p>
           </div>
         </div>
         <Button asChild>
           <Link href="/admin/dashboard/tests/create">
-            <PlusCircle className="mr-2 h-4 w-4" /> Create New Test
+            <PlusCircle className="mr-2 h-4 w-4" /> Buat Tes Baru
           </Link>
         </Button>
       </div>
 
       <Card className="shadow-md">
         <CardHeader>
-          <CardTitle>Existing Tests</CardTitle>
+          <CardTitle>Tes yang Ada</CardTitle>
           <CardDescription>
-            A list of all psychological tests currently in the system.
+            Daftar semua tes psikologi yang saat ini ada di sistem.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -41,16 +42,16 @@ export default async function ManageTestsPage() {
             <div className="text-center py-10">
               <Image 
                 src="https://placehold.co/300x200.png" 
-                alt="No tests created" 
+                alt="Belum ada tes yang dibuat" 
                 width={300} 
                 height={200} 
                 className="mx-auto mb-4 rounded-md"
                 data-ai-hint="empty state documents"
               />
-              <p className="text-muted-foreground text-lg">No tests have been created yet.</p>
+              <p className="text-muted-foreground text-lg">Belum ada tes yang dibuat.</p>
               <Button asChild className="mt-4">
                 <Link href="/admin/dashboard/tests/create">
-                  <PlusCircle className="mr-2 h-4 w-4" /> Create Your First Test
+                  <PlusCircle className="mr-2 h-4 w-4" /> Buat Tes Pertama Anda
                 </Link>
               </Button>
             </div>
@@ -60,3 +61,4 @@ export default async function ManageTestsPage() {
     </div>
   );
 }
+

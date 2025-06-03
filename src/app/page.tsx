@@ -1,3 +1,4 @@
+
 import Link from 'next/link';
 import { getTests } from '@/lib/dataService';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,10 +15,10 @@ export default async function HomePage() {
       <Header />
       <main className="flex-grow container mx-auto px-4 py-8">
         <section className="text-center mb-12">
-          <h1 className="text-4xl font-bold font-headline mb-4 text-primary">Welcome to PsycheValuator</h1>
+          <h1 className="text-4xl font-bold font-headline mb-4 text-primary">Selamat Datang di PsycheValuator</h1>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Discover insights about yourself through our carefully designed psychological assessments.
-            Choose a test below to get started.
+            Temukan wawasan tentang diri Anda melalui penilaian psikologis kami yang dirancang dengan cermat.
+            Pilih tes di bawah ini untuk memulai.
           </p>
         </section>
 
@@ -43,7 +44,7 @@ export default async function HomePage() {
                     />
                   <Button asChild className="w-full mt-auto bg-primary hover:bg-primary/90 text-primary-foreground">
                     <Link href={`/tests/${test.id}`}>
-                      Start Test <ArrowRight className="ml-2 h-4 w-4" />
+                      Mulai Tes <ArrowRight className="ml-2 h-4 w-4" />
                     </Link>
                   </Button>
                 </CardContent>
@@ -52,14 +53,15 @@ export default async function HomePage() {
           </div>
         ) : (
           <div className="text-center py-10">
-            <Image src="https://placehold.co/300x200.png" alt="No tests available" width={300} height={200} className="mx-auto mb-4 rounded-md" data-ai-hint="empty state" />
-            <p className="text-muted-foreground text-lg">No tests available at the moment. Please check back later.</p>
+            <Image src="https://placehold.co/300x200.png" alt="Tidak ada tes tersedia" width={300} height={200} className="mx-auto mb-4 rounded-md" data-ai-hint="empty state" />
+            <p className="text-muted-foreground text-lg">Tidak ada tes yang tersedia saat ini. Silakan periksa kembali nanti.</p>
           </div>
         )}
       </main>
       <footer className="text-center py-6 border-t text-sm text-muted-foreground">
-        © {new Date().getFullYear()} PsycheValuator. All rights reserved.
+        © {new Date().getFullYear()} PsycheValuator. Hak cipta dilindungi.
       </footer>
     </div>
   );
 }
+

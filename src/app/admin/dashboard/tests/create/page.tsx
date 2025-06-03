@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -20,10 +21,10 @@ export default function CreateTestPage() {
     setIsSubmitting(false);
 
     if (result.success && result.test) {
-      toast({ title: 'Test Created', description: `"${result.test.title}" has been successfully created.` });
-      router.push(`/admin/dashboard/tests/${result.test.id}/edit`); // Redirect to edit page to add questions
+      toast({ title: 'Tes Dibuat', description: `"${result.test.title}" berhasil dibuat.` });
+      router.push(`/admin/dashboard/tests/${result.test.id}/edit`); 
     } else {
-      toast({ title: 'Error Creating Test', description: result.message || 'Could not create the test.', variant: 'destructive' });
+      toast({ title: 'Error Membuat Tes', description: result.message || 'Tidak dapat membuat tes.', variant: 'destructive' });
     }
   };
 
@@ -33,17 +34,18 @@ export default function CreateTestPage() {
         <div className="flex items-center gap-3">
           <PlusCircle className="h-8 w-8 text-primary" />
           <div>
-            <h1 className="text-2xl font-bold font-headline">Create New Test</h1>
-            <p className="text-muted-foreground">Define the basic information for your new psychology test.</p>
+            <h1 className="text-2xl font-bold font-headline">Buat Tes Baru</h1>
+            <p className="text-muted-foreground">Tentukan informasi dasar untuk tes psikologi baru Anda.</p>
           </div>
         </div>
         <Button variant="outline" asChild>
           <Link href="/admin/dashboard/tests">
-            <ArrowLeft className="mr-2 h-4 w-4" /> Back to Test List
+            <ArrowLeft className="mr-2 h-4 w-4" /> Kembali ke Daftar Tes
           </Link>
         </Button>
       </div>
-      <TestForm onSubmit={handleSubmit} isSubmitting={isSubmitting} submitButtonText="Create Test and Add Questions" />
+      <TestForm onSubmit={handleSubmit} isSubmitting={isSubmitting} submitButtonText="Buat Tes dan Tambah Pertanyaan" />
     </div>
   );
 }
+

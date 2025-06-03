@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -12,8 +13,8 @@ import type { Test } from '@/types';
 import { Save } from 'lucide-react';
 
 const testFormSchema = z.object({
-  title: z.string().min(3, { message: 'Title must be at least 3 characters long.' }).max(100),
-  description: z.string().min(10, { message: 'Description must be at least 10 characters long.' }).max(500),
+  title: z.string().min(3, { message: 'Judul minimal 3 karakter.' }).max(100),
+  description: z.string().min(10, { message: 'Deskripsi minimal 10 karakter.' }).max(500),
 });
 
 type TestFormValues = z.infer<typeof testFormSchema>;
@@ -25,7 +26,7 @@ interface TestFormProps {
   submitButtonText?: string;
 }
 
-export function TestForm({ initialData, onSubmit, isSubmitting, submitButtonText = "Save Test" }: TestFormProps) {
+export function TestForm({ initialData, onSubmit, isSubmitting, submitButtonText = "Simpan Tes" }: TestFormProps) {
   const form = useForm<TestFormValues>({
     resolver: zodResolver(testFormSchema),
     defaultValues: {
@@ -37,8 +38,8 @@ export function TestForm({ initialData, onSubmit, isSubmitting, submitButtonText
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="font-headline">{initialData ? 'Edit Test Details' : 'Create New Test'}</CardTitle>
-        <CardDescription>{initialData ? 'Update the title and description of the test.' : 'Enter the details for the new psychology test.'}</CardDescription>
+        <CardTitle className="font-headline">{initialData ? 'Edit Detail Tes' : 'Buat Tes Baru'}</CardTitle>
+        <CardDescription>{initialData ? 'Perbarui judul dan deskripsi tes.' : 'Masukkan detail untuk tes psikologi baru.'}</CardDescription>
       </CardHeader>
       <CardContent>
         <Form {...form}>
@@ -48,11 +49,11 @@ export function TestForm({ initialData, onSubmit, isSubmitting, submitButtonText
               name="title"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Test Title</FormLabel>
+                  <FormLabel>Judul Tes</FormLabel>
                   <FormControl>
-                    <Input placeholder="e.g., Personality Assessment" {...field} />
+                    <Input placeholder="cth., Penilaian Kepribadian" {...field} />
                   </FormControl>
-                  <FormDescription>A clear and concise title for the test.</FormDescription>
+                  <FormDescription>Judul yang jelas dan ringkas untuk tes.</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
@@ -62,18 +63,18 @@ export function TestForm({ initialData, onSubmit, isSubmitting, submitButtonText
               name="description"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Test Description</FormLabel>
+                  <FormLabel>Deskripsi Tes</FormLabel>
                   <FormControl>
-                    <Textarea placeholder="e.g., This test helps understand your core personality traits..." {...field} rows={4} />
+                    <Textarea placeholder="cth., Tes ini membantu memahami sifat kepribadian inti Anda..." {...field} rows={4} />
                   </FormControl>
-                  <FormDescription>A brief overview of what the test measures.</FormDescription>
+                  <FormDescription>Gambaran singkat tentang apa yang diukur oleh tes.</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
             />
             <Button type="submit" disabled={isSubmitting} className="w-full sm:w-auto">
               <Save className="mr-2 h-4 w-4" />
-              {isSubmitting ? 'Saving...' : submitButtonText}
+              {isSubmitting ? 'Menyimpan...' : submitButtonText}
             </Button>
           </form>
         </Form>
@@ -81,3 +82,4 @@ export function TestForm({ initialData, onSubmit, isSubmitting, submitButtonText
     </Card>
   );
 }
+
