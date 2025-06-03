@@ -22,6 +22,7 @@ export interface Test {
   title: string;
   description: string;
   questions: Question[];
+  isPublished: boolean; // New field to control test availability
 }
 
 export interface UserAnswer {

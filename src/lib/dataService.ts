@@ -7,6 +7,7 @@ let tests: Test[] = [
     id: 'test-1',
     title: 'Penilaian Kepribadian Pengantar',
     description: 'Penilaian singkat untuk memahami sifat-sifat dasar kepribadian. Tes ini berisi 20 pertanyaan.',
+    isPublished: true,
     questions: [
       { id: 'q1-1', text: 'Seberapa terbuka Anda menganggap diri Anda?', type: 'rating-scale', scaleMin: 1, scaleMax: 5, minLabel: 'Sangat Tertutup', maxLabel: 'Sangat Terbuka' },
       { id: 'q1-2', text: 'Aktivitas mana yang Anda sukai di akhir pekan?', type: 'multiple-choice', options: [ { id: 'opt1-2-1', text: 'Membaca buku di rumah' }, { id: 'opt1-2-2', text: 'Menghadiri pertemuan sosial' }, { id: 'opt1-2-3', text: 'Menjelajahi alam' } ] },
@@ -33,10 +34,12 @@ let tests: Test[] = [
   {
     id: 'test-2',
     title: 'Evaluasi Manajemen Stres',
-    description: 'Memahami mekanisme koping Anda di bawah tekanan.',
+    description: 'Memahami mekanisme koping Anda di bawah tekanan. Tes ini sekarang berisi 3 pertanyaan awal.',
+    isPublished: true,
     questions: [
       { id: 'q2-1', text: 'Seberapa sering Anda merasa kewalahan dengan tanggung jawab Anda?', type: 'rating-scale', scaleMin: 1, scaleMax: 5, minLabel: 'Jarang', maxLabel: 'Sangat Sering' },
       { id: 'q2-2', text: 'Apa cara utama Anda dalam menghadapi stres?', type: 'open-ended' },
+      { id: 'q2-3', text: 'Manakah dari berikut ini yang paling membantu Anda rileks saat stres?', type: 'multiple-choice', options: [ {id: 'opt2-3-1', text: 'Mendengarkan musik'}, {id: 'opt2-3-2', text: 'Olahraga ringan'}, {id: 'opt2-3-3', text: 'Meditasi atau mindfulness'} ] },
     ],
   },
 ];
@@ -56,20 +59,28 @@ export async function getTestById(id: string): Promise<Test | undefined> {
   return JSON.parse(JSON.stringify(tests.find(test => test.id === id)));
 }
 
-export async function createTest(testData: Omit<Test, 'id' | 'questions'>): Promise<Test> {
+export async function createTest(testData: Omit<Test, 'id' | 'questions' | 'isPublished'>): Promise<Test> {
   const newTest: Test = {
     ...testData,
     id: generateId('test'),
     questions: [],
+    isPublished: true, // Default to published
   };
   tests.push(newTest);
   return JSON.parse(JSON.stringify(newTest));
 }
 
-export async function updateTest(id: string, testData: Partial<Omit<Test, 'id' | 'questions'>>): Promise<Test | undefined> {
+export async function updateTest(id: string, testData: Partial<Omit<Test, 'id' | 'questions' | 'isPublished'>>): Promise<Test | undefined> {
   const testIndex = tests.findIndex(test => test.id === id);
   if (testIndex === -1) return undefined;
   tests[testIndex] = { ...tests[testIndex], ...testData };
+  return JSON.parse(JSON.stringify(tests[testIndex]));
+}
+
+export async function updateTestPublicationStatus(testId: string, isPublished: boolean): Promise<Test | undefined> {
+  const testIndex = tests.findIndex(test => test.id === testId);
+  if (testIndex === -1) return undefined;
+  tests[testIndex].isPublished = isPublished;
   return JSON.parse(JSON.stringify(tests[testIndex]));
 }
 
@@ -101,7 +112,6 @@ export async function addQuestionToTest(testId: string, questionData: Omit<Quest
     newQuestion.minLabel = questionData.minLabel;
     newQuestion.maxLabel = questionData.maxLabel;
   }
-  // For 'open-ended', no specific fields beyond text and type are needed initially
 
   test.questions.push(newQuestion);
   return JSON.parse(JSON.stringify(newQuestion));
@@ -117,10 +127,9 @@ export async function updateQuestionInTest(testId: string, questionId: string, q
   const updatedQuestion: Question = {
     ...existingQuestion,
     ...questionData,
-    id: questionId, // Ensure ID is not changed
+    id: questionId, 
   };
 
-  // Clear irrelevant fields based on new type
   if (updatedQuestion.type === 'multiple-choice') {
     updatedQuestion.options = (questionData.options || existingQuestion.options || []).map((opt, index) => ({
       id: opt.id || generateId(`opt-${questionId}-${index}`),
@@ -165,7 +174,7 @@ export async function createInitialSubmission(testId: string, fullName: string):
     answers: [],
     timeTaken: 0,
     submittedAt: new Date().toISOString(),
-    analysisStatus: 'pending_ai', // Initial status
+    analysisStatus: 'pending_ai', 
   };
   submissions.push(newSubmission);
   return JSON.parse(JSON.stringify(newSubmission));
@@ -178,7 +187,7 @@ export async function updateSubmission(submissionId: string, data: Partial<Omit<
   submissions[submissionIndex] = {
     ...submissions[submissionIndex],
     ...data,
-    ...(data.answers && { answers: data.answers }), // Ensure answers array is properly replaced
+    ...(data.answers && { answers: data.answers }), 
   };
   return JSON.parse(JSON.stringify(submissions[submissionIndex]));
 }

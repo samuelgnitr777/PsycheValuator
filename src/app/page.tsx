@@ -8,7 +8,8 @@ import Header from '@/components/layout/Header';
 import Image from 'next/image';
 
 export default async function HomePage() {
-  const tests = await getTests();
+  const allTests = await getTests();
+  const publishedTests = allTests.filter(test => test.isPublished);
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -22,9 +23,9 @@ export default async function HomePage() {
           </p>
         </section>
 
-        {tests.length > 0 ? (
+        {publishedTests.length > 0 ? (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {tests.map((test) => (
+            {publishedTests.map((test) => (
               <Card key={test.id} className="flex flex-col overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 rounded-lg">
                 <CardHeader>
                   <div className="flex items-center mb-2">
@@ -53,7 +54,14 @@ export default async function HomePage() {
           </div>
         ) : (
           <div className="text-center py-10">
-            <Image src="https://placehold.co/300x200.png" alt="Tidak ada tes tersedia" width={300} height={200} className="mx-auto mb-4 rounded-md" data-ai-hint="empty state" />
+            <Image 
+              src="https://placehold.co/300x200.png" 
+              alt="Tidak ada tes tersedia" 
+              width={300} 
+              height={200} 
+              className="mx-auto mb-4 rounded-md"
+              data-ai-hint="empty state folder"
+            />
             <p className="text-muted-foreground text-lg">Tidak ada tes yang tersedia saat ini. Silakan periksa kembali nanti.</p>
           </div>
         )}
@@ -64,4 +72,3 @@ export default async function HomePage() {
     </div>
   );
 }
-

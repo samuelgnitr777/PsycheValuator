@@ -1,33 +1,42 @@
+
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { createTest as createTestData, deleteTest as deleteTestData, updateTest as updateTestData, addQuestionToTest as addQuestionToTestData, updateQuestionInTest as updateQuestionInTestData, deleteQuestionFromTest as deleteQuestionFromTestData } from '@/lib/dataService';
+import { 
+  createTest as createTestData, 
+  deleteTest as deleteTestData, 
+  updateTest as updateTestData, 
+  addQuestionToTest as addQuestionToTestData, 
+  updateQuestionInTest as updateQuestionInTestData, 
+  deleteQuestionFromTest as deleteQuestionFromTestData,
+  updateTestPublicationStatus 
+} from '@/lib/dataService';
 import type { Test, Question } from '@/types';
 
-export async function createTestAction(data: Omit<Test, 'id' | 'questions'>) {
+export async function createTestAction(data: Omit<Test, 'id' | 'questions' | 'isPublished'>) {
   try {
     const newTest = await createTestData(data);
     revalidatePath('/admin/dashboard/tests');
-    revalidatePath('/'); // Revalidate home page as well
+    revalidatePath('/'); 
     return { success: true, test: newTest };
   } catch (error) {
-    return { success: false, message: error instanceof Error ? error.message : 'Failed to create test' };
+    return { success: false, message: error instanceof Error ? error.message : 'Gagal membuat tes' };
   }
 }
 
-export async function updateTestAction(id: string, data: Partial<Omit<Test, 'id' | 'questions'>>) {
+export async function updateTestAction(id: string, data: Partial<Omit<Test, 'id' | 'questions' | 'isPublished'>>) {
   try {
     const updatedTest = await updateTestData(id, data);
     if (!updatedTest) {
-      return { success: false, message: 'Test not found' };
+      return { success: false, message: 'Tes tidak ditemukan' };
     }
     revalidatePath('/admin/dashboard/tests');
     revalidatePath(`/admin/dashboard/tests/${id}/edit`);
-    revalidatePath(`/tests/${id}`); // Revalidate public test page
+    revalidatePath(`/tests/${id}`); 
     revalidatePath('/');
     return { success: true, test: updatedTest };
   } catch (error) {
-    return { success: false, message: error instanceof Error ? error.message : 'Failed to update test' };
+    return { success: false, message: error instanceof Error ? error.message : 'Gagal memperbarui tes' };
   }
 }
 
@@ -35,13 +44,28 @@ export async function deleteTestAction(id: string) {
   try {
     const success = await deleteTestData(id);
     if (!success) {
-      return { success: false, message: 'Test not found or could not be deleted' };
+      return { success: false, message: 'Tes tidak ditemukan atau tidak dapat dihapus' };
     }
     revalidatePath('/admin/dashboard/tests');
     revalidatePath('/');
     return { success: true };
   } catch (error) {
-    return { success: false, message: error instanceof Error ? error.message : 'Failed to delete test' };
+    return { success: false, message: error instanceof Error ? error.message : 'Gagal menghapus tes' };
+  }
+}
+
+export async function toggleTestPublicationAction(testId: string, newStatus: boolean) {
+  try {
+    const updatedTest = await updateTestPublicationStatus(testId, newStatus);
+    if (!updatedTest) {
+      return { success: false, message: 'Tes tidak ditemukan' };
+    }
+    revalidatePath('/admin/dashboard/tests');
+    revalidatePath('/');
+    revalidatePath(`/tests/${testId}`);
+    return { success: true, test: updatedTest };
+  } catch (error) {
+    return { success: false, message: error instanceof Error ? error.message : 'Gagal memperbarui status publikasi tes' };
   }
 }
 
@@ -49,13 +73,13 @@ export async function addQuestionAction(testId: string, questionData: Omit<Quest
   try {
     const newQuestion = await addQuestionToTestData(testId, questionData);
     if (!newQuestion) {
-      return { success: false, message: 'Test not found or failed to add question' };
+      return { success: false, message: 'Tes tidak ditemukan atau gagal menambah pertanyaan' };
     }
     revalidatePath(`/admin/dashboard/tests/${testId}/edit`);
     revalidatePath(`/tests/${testId}`);
     return { success: true, question: newQuestion };
   } catch (error) {
-    return { success: false, message: error instanceof Error ? error.message : 'Failed to add question' };
+    return { success: false, message: error instanceof Error ? error.message : 'Gagal menambah pertanyaan' };
   }
 }
 
@@ -63,13 +87,13 @@ export async function updateQuestionAction(testId: string, questionId: string, q
    try {
     const updatedQuestion = await updateQuestionInTestData(testId, questionId, questionData);
     if (!updatedQuestion) {
-      return { success: false, message: 'Question not found or failed to update' };
+      return { success: false, message: 'Pertanyaan tidak ditemukan atau gagal memperbarui' };
     }
     revalidatePath(`/admin/dashboard/tests/${testId}/edit`);
     revalidatePath(`/tests/${testId}`);
     return { success: true, question: updatedQuestion };
   } catch (error) {
-    return { success: false, message: error instanceof Error ? error.message : 'Failed to update question' };
+    return { success: false, message: error instanceof Error ? error.message : 'Gagal memperbarui pertanyaan' };
   }
 }
 
@@ -77,12 +101,12 @@ export async function deleteQuestionAction(testId: string, questionId: string) {
   try {
     const success = await deleteQuestionFromTestData(testId, questionId);
     if (!success) {
-      return { success: false, message: 'Question not found or could not be deleted' };
+      return { success: false, message: 'Pertanyaan tidak ditemukan atau tidak dapat dihapus' };
     }
     revalidatePath(`/admin/dashboard/tests/${testId}/edit`);
     revalidatePath(`/tests/${testId}`);
     return { success: true };
   } catch (error) {
-    return { success: false, message: error instanceof Error ? error.message : 'Failed to delete question' };
+    return { success: false, message: error instanceof Error ? error.message : 'Gagal menghapus pertanyaan' };
   }
 }
