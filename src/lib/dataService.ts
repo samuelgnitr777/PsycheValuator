@@ -91,7 +91,7 @@ export async function getPublishedTestById(id: string): Promise<Test | undefined
       )
     `)
     .eq('id', id)
-    .eq('isPublished', true) 
+    .eq('isPublished', true)
     .order('order', { foreignTable: 'questions', ascending: true })
     .maybeSingle();
 
@@ -169,7 +169,7 @@ export async function getTestByIdAdmin(id: string): Promise<Test | undefined> {
     .maybeSingle();
 
   if (error) {
-    throw handleAdminSupabaseError(error, `fetching test by id ${id}`);
+     throw handleAdminSupabaseError(error, `fetching test by id ${id}`);
   }
   if (!data) return undefined;
 
@@ -187,7 +187,7 @@ export async function createTestAdmin(testData: Omit<Test, 'id' | 'questions' | 
     .insert({
       title: testData.title,
       description: testData.description,
-      isPublished: false, 
+      isPublished: false,
     })
     .select()
     .single();
@@ -213,7 +213,7 @@ export async function updateTestAdmin(id: string, testData: Partial<Omit<Test, '
     .select(`id, title, description, isPublished, questions (id, text, type, options, scale_min, scale_max, min_label, max_label, order)`)
     .order('order', { foreignTable: 'questions', ascending: true })
     .maybeSingle();
-    
+
   if (error) {
     throw handleAdminSupabaseError(error, `updating test ${id}`);
   }
@@ -235,12 +235,12 @@ export async function updateTestPublicationStatusAdmin(testId: string, isPublish
   }
   if (!data) return undefined;
   // Fetch the full test details again to include questions
-  return getTestByIdAdmin(data.id); 
+  return getTestByIdAdmin(data.id);
 }
 
 export async function deleteTestAdmin(id: string): Promise<boolean> {
   const supabaseAdmin = createSupabaseServiceRoleClient();
-  
+
   // Delete associated questions first
   const { error: questionDeleteError } = await supabaseAdmin
     .from('questions')
@@ -251,7 +251,7 @@ export async function deleteTestAdmin(id: string): Promise<boolean> {
     // Log the error but don't necessarily throw, to allow test deletion attempt
     console.error(handleAdminSupabaseError(questionDeleteError, `deleting questions for test ${id} (non-fatal)`));
   }
-  
+
   const { error } = await supabaseAdmin
     .from('tests')
     .delete()
@@ -378,9 +378,8 @@ export async function createInitialSubmission(testId: string, fullName: string, 
     submitted_at: new Date().toISOString(), // Set submission time
     analysis_status: 'pending_ai' as const, // Set initial status
   };
-  console.log("Attempting to insert submission payload:", JSON.stringify(submissionPayload, null, 2));
 
-  const { data, error } = await anonSupabaseClient 
+  const { data, error } = await anonSupabaseClient
     .from('submissions')
     .insert(submissionPayload)
     .select()
@@ -409,7 +408,7 @@ export async function createInitialSubmission(testId: string, fullName: string, 
     } else {
       detailedMessage = `Received an unexpected error type during ${context}: ${String(error)}.`;
     }
-    
+
     if (!detailedMessage.toLowerCase().includes('rls') && !detailedMessage.toLowerCase().includes('policy')) {
         detailedMessage += ' Double check RLS policies for the "anon" role on the "submissions" table for INSERT. Also, ensure all NOT NULL columns in your "submissions" table schema are being provided with values in the insert statement and match their data types.';
     }
@@ -427,15 +426,15 @@ export async function updateSubmission(submissionId: string, submissionData: Par
     .update({
       answers: submissionData.answers,
       time_taken: submissionData.timeTaken,
-      submitted_at: submissionData.submittedAt, 
-      analysis_status: submissionData.analysisStatus, 
+      submitted_at: submissionData.submittedAt,
+      analysis_status: submissionData.analysisStatus,
       psychological_traits: submissionData.psychologicalTraits,
       ai_error: submissionData.aiError,
       manual_analysis_notes: submissionData.manualAnalysisNotes,
     })
     .eq('id', submissionId)
     .select()
-    .single();
+    .maybeSingle(); // Changed from .single() to .maybeSingle()
 
   if (error) {
      console.error(`Supabase error updating submission ${submissionId}:`, JSON.stringify(error, null, 2));
@@ -466,7 +465,7 @@ export async function updateSubmissionAdmin(submissionId: string, submissionData
         .update(submissionData)
         .eq('id', submissionId)
         .select()
-        .single();
+        .maybeSingle(); // Changed from .single() to .maybeSingle()
 
     if (error) {
         throw handleAdminSupabaseError(error, `updating submission ${submissionId}`);
